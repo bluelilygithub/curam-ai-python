@@ -55,7 +55,10 @@ class WebScraper:
             # Find price element
             price_element = soup.select_one(price_selector)
             if price_element:
-                price_text = price_element.get_text()
+                if price_element.name == 'meta' and price_element.get('content'):
+                    price_text = price_element.get('content')
+                else:
+                    price_text = price_element.get_text()
                 # Extract number from price text
                 price_match = re.search(r'[\d,]+\.?\d*', price_text.replace(',', ''))
                 if price_match:
