@@ -5,6 +5,5 @@ matplotlib==3.7.2
 requests==2.31.0
 beautifulsoup4==4.12.2
 schedule==1.2.0
-sqlite3
 gunicorn==21.2.0
 Werkzeug==2.3.7
