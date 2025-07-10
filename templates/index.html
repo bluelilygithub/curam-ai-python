@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Automated Report Generator</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        .upload-form { border: 2px dashed #ccc; padding: 40px; text-align: center; margin: 20px 0; }
+        button { background: #007bff; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .flash { padding: 10px; margin: 10px 0; border-radius: 4px; background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>Automated Report Generator</h1>
+    <p>Upload a CSV file to generate an automated data analysis report.</p>
+    
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="flash">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <form method="post" action="/upload" enctype="multipart/form-data" class="upload-form">
+        <p>Choose CSV file:</p>
+        <input type="file" name="file" accept=".csv" required>
+        <br><br>
+        <button type="submit">Generate Report</button>
+    </form>
+</body>
+</html>
