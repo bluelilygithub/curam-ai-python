@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, send_file, flash, redirect, url_for
+from flask import Flask, render_template, request, send_file, flash, redirect, url_for, jsonify
 import pandas as pd
 import matplotlib.pyplot as plt
 import io
@@ -8,6 +8,10 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
 from reportlab.lib.styles import getSampleStyleSheet
 import os
 from werkzeug.utils import secure_filename
+from scraper import WebScraper
+import sqlite3
+import json
+from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-here'
@@ -17,20 +21,28 @@ UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
+# Initialize scraper
+scraper = WebScraper()
+
 @app.route('/')
 def index():
     return render_template('index.html')
+
+# Original report generator routes
+@app.route('/reports')
+def reports():
+    return render_template('reports.html')
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
         flash('No file selected')
-        return redirect(url_for('index'))
+        return redirect(url_for('reports'))
     
     file = request.files['file']
     if file.filename == '':
         flash('No file selected')
-        return redirect(url_for('index'))
+        return redirect(url_for('reports'))
     
     if file and file.filename.endswith('.csv'):
         filename = secure_filename(file.filename)
@@ -38,15 +50,44 @@ def upload_file():
         file.save(filepath)
         
         try:
-            # Generate report
             report_path = generate_report(filepath)
             return send_file(report_path, as_attachment=True, download_name='report.pdf')
         except Exception as e:
             flash(f'Error generating report: {str(e)}')
-            return redirect(url_for('index'))
+            return redirect(url_for('reports'))
     
     flash('Please upload a CSV file')
-    return redirect(url_for('index'))
+    return redirect(url_for('reports'))
+
+# New scraper routes
+@app.route('/scraper')
+def scraper_dashboard():
+    conn = sqlite3.connect('scraper.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, name, url, price_selector FROM monitored_sites')
+    sites = cursor.fetchall()
+    conn.close()
+    return render_template('scraper.html', sites=sites)
+
+@app.route('/add_site', methods=['POST'])
+def add_site():
+    name = request.form['name']
+    url = request.form['url']
+    price_selector = request.form['price_selector']
+    
+    scraper.add_site(name, url, price_selector)
+    flash(f'Added {name} to monitoring list')
+    return redirect(url_for('scraper_dashboard'))
+
+@app.route('/scrape_now')
+def scrape_now():
+    results = scraper.scrape_all_sites()
+    return jsonify({'results': results})
+
+@app.route('/price_history/<int:site_id>')
+def price_history(site_id):
+    history = scraper.get_price_history(site_id)
+    return jsonify({'history': history})
 
 def generate_report(csv_file):
     # Read CSV
