@@ -1,32 +1,38 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Automated Report Generator</title>
+    <title>Python Demo Dashboard</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
-        .upload-form { border: 2px dashed #ccc; padding: 40px; text-align: center; margin: 20px 0; }
-        button { background: #007bff; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; }
-        button:hover { background: #0056b3; }
-        .flash { padding: 10px; margin: 10px 0; border-radius: 4px; background: #f8d7da; color: #721c24; }
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+        .nav { background: #f8f9fa; padding: 20px; margin-bottom: 30px; border-radius: 8px; }
+        .nav a { margin-right: 20px; text-decoration: none; color: #007bff; font-weight: bold; }
+        .nav a:hover { color: #0056b3; }
+        .feature-box { border: 1px solid #ddd; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .feature-box h3 { color: #333; margin-top: 0; }
+        .btn { background: #007bff; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; }
+        .btn:hover { background: #0056b3; }
     </style>
 </head>
 <body>
-    <h1>Automated Report Generator</h1>
-    <p>Upload a CSV file to generate an automated data analysis report.</p>
+    <div class="nav">
+        <a href="/">Home</a>
+        <a href="/scraper">Web Scraper</a>
+        <a href="/reports">Report Generator</a>
+    </div>
+
+    <h1>Python Demo Dashboard</h1>
+    <p>Choose a tool to demonstrate Python's capabilities:</p>
     
-    {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            {% for message in messages %}
-                <div class="flash">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
+    <div class="feature-box">
+        <h3>🕷️ Web Scraper & Price Monitor</h3>
+        <p>Automatically monitor competitor prices and websites. Track changes over time and get alerts.</p>
+        <a href="/scraper" class="btn">Launch Scraper</a>
+    </div>
     
-    <form method="post" action="/upload" enctype="multipart/form-data" class="upload-form">
-        <p>Choose CSV file:</p>
-        <input type="file" name="file" accept=".csv" required>
-        <br><br>
-        <button type="submit">Generate Report</button>
-    </form>
+    <div class="feature-box">
+        <h3>📊 Automated Report Generator</h3>
+        <p>Upload CSV files and generate professional PDF reports with charts and analysis.</p>
+        <a href="/reports" class="btn">Generate Reports</a>
+    </div>
 </body>
 </html>
