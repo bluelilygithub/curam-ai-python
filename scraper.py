@@ -46,6 +46,10 @@ class WebScraper:
     
     def scrape_price(self, url, price_selector):
         try:
+            # Clean the URL - remove any "URL: " prefix
+            if url.startswith('URL: '):
+            url = url[5:]  # Remove "URL: " prefix
+
             print(f"Attempting to scrape: {url}")
             print(f"Using selector: {price_selector}")
             
