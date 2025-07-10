@@ -46,23 +46,38 @@ class WebScraper:
     
     def scrape_price(self, url, price_selector):
         try:
+            print(f"Attempting to scrape: {url}")
+            print(f"Using selector: {price_selector}")
+            
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             }
             response = requests.get(url, headers=headers, timeout=10)
+            print(f"Response status: {response.status_code}")
+            
             soup = BeautifulSoup(response.content, 'html.parser')
             
             # Find price element
             price_element = soup.select_one(price_selector)
+            print(f"Found element: {price_element}")
+            
             if price_element:
+                # Check if it's a meta tag with content attribute
                 if price_element.name == 'meta' and price_element.get('content'):
                     price_text = price_element.get('content')
+                    print(f"Meta content: {price_text}")
                 else:
                     price_text = price_element.get_text()
+                    print(f"Element text: {price_text}")
+                
                 # Extract number from price text
                 price_match = re.search(r'[\d,]+\.?\d*', price_text.replace(',', ''))
                 if price_match:
-                    return float(price_match.group())
+                    final_price = float(price_match.group())
+                    print(f"Final price: {final_price}")
+                    return final_price
+            
+            print("No price found")
             return None
         except Exception as e:
             print(f"Error scraping {url}: {str(e)}")
