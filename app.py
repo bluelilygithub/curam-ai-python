@@ -27,7 +27,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 # Configure CORS for your shared hosting domain
 CORS(app, origins=[
     'https://curam-ai.com.au',  # Your shared hosting domain
-    'https://curam-ai.com.au/curam-ai-python/',     # Replace with actual domain where HTML is hosted
+    'https://curam-ai.com.au/python-hub/',     # Replace with actual domain where HTML is hosted
     'http://localhost:3000',
     'http://localhost:8000',
     '*'  # Allow all for testing - remove in production
