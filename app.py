@@ -7,7 +7,7 @@ matplotlib.use('Agg')  # Non-interactive backend for server
 import io
 import base64
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocument, Paragraph, Spacer, Image
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
 from reportlab.lib.styles import getSampleStyleSheet
 import os
 import sys
