@@ -376,3 +376,176 @@ if __name__ == '__main__':
     debug_mode = os.environ.get('FLASK_ENV', 'production') == 'development'
     logger.info(f"Starting Flask app on port {port}")
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
+
+
+    # Add these endpoints to your app.py for analytics and graphing
+
+@app.route('/api/analytics/price-comparison', methods=['GET'])
+def price_comparison():
+    """Get price comparison data for bar charts"""
+    try:
+        if not scraper:
+            return jsonify({'success': False, 'error': 'Scraper not available'}), 500
+        
+        analytics = scraper.get_price_analytics()
+        
+        # Format for chart.js
+        chart_data = {
+            'labels': [item['name'][:20] + '...' if len(item['name']) > 20 else item['name'] 
+                      for item in analytics['average_prices']],
+            'datasets': [{
+                'label': 'Average Price ($)',
+                'data': [item['avg_price'] for item in analytics['average_prices']],
+                'backgroundColor': [
+                    'rgba(255, 99, 132, 0.6)',
+                    'rgba(54, 162, 235, 0.6)',
+                    'rgba(255, 205, 86, 0.6)',
+                    'rgba(75, 192, 192, 0.6)',
+                    'rgba(153, 102, 255, 0.6)',
+                    'rgba(255, 159, 64, 0.6)',
+                    'rgba(199, 199, 199, 0.6)',
+                    'rgba(83, 102, 255, 0.6)'
+                ],
+                'borderColor': [
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(255, 205, 86, 1)',
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(153, 102, 255, 1)',
+                    'rgba(255, 159, 64, 1)',
+                    'rgba(199, 199, 199, 1)',
+                    'rgba(83, 102, 255, 1)'
+                ],
+                'borderWidth': 1
+            }]
+        }
+        
+        return jsonify({
+            'success': True,
+            'chart_data': chart_data,
+            'raw_data': analytics['average_prices']
+        })
+        
+    except Exception as e:
+        logger.error(f"Price comparison error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/analytics/price-trends', methods=['GET'])
+def price_trends():
+    """Get price trends over time for line charts"""
+    try:
+        if not scraper:
+            return jsonify({'success': False, 'error': 'Scraper not available'}), 500
+        
+        analytics = scraper.get_price_analytics()
+        
+        # Group by site for multiple lines
+        site_data = {}
+        for item in analytics['price_trends']:
+            site_name = item['name'][:15] + '...' if len(item['name']) > 15 else item['name']
+            if site_name not in site_data:
+                site_data[site_name] = {'dates': [], 'prices': []}
+            
+            site_data[site_name]['dates'].append(item['date'])
+            site_data[site_name]['prices'].append(item['price'])
+        
+        # Format for chart.js line chart
+        datasets = []
+        colors = [
+            'rgb(255, 99, 132)', 'rgb(54, 162, 235)', 'rgb(255, 205, 86)',
+            'rgb(75, 192, 192)', 'rgb(153, 102, 255)', 'rgb(255, 159, 64)'
+        ]
+        
+        for i, (site, data) in enumerate(site_data.items()):
+            datasets.append({
+                'label': site,
+                'data': data['prices'][:10],  # Last 10 data points
+                'borderColor': colors[i % len(colors)],
+                'backgroundColor': colors[i % len(colors)] + '20',  # 20% opacity
+                'tension': 0.4
+            })
+        
+        # Use dates from first site for x-axis
+        first_site = list(site_data.values())[0] if site_data else {'dates': []}
+        labels = [datetime.fromisoformat(date).strftime('%m/%d %H:%M') 
+                 for date in first_site['dates'][:10]]
+        
+        chart_data = {
+            'labels': labels,
+            'datasets': datasets
+        }
+        
+        return jsonify({
+            'success': True,
+            'chart_data': chart_data,
+            'raw_data': analytics['price_trends']
+        })
+        
+    except Exception as e:
+        logger.error(f"Price trends error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/simulate-data', methods=['POST'])
+def simulate_data():
+    """Generate demo data for testing"""
+    try:
+        if not scraper:
+            return jsonify({'success': False, 'error': 'Scraper not available'}), 500
+        
+        data = request.get_json() or {}
+        days = data.get('days', 7)
+        
+        scraper.simulate_historical_data(days)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Generated {days} days of demo data',
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Simulate data error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/analytics/summary', methods=['GET'])
+def analytics_summary():
+    """Get summary statistics"""
+    try:
+        if not scraper:
+            return jsonify({'success': False, 'error': 'Scraper not available'}), 500
+        
+        conn = sqlite3.connect('scraper.db')
+        cursor = conn.cursor()
+        
+        # Summary stats
+        cursor.execute('SELECT COUNT(*) FROM monitored_sites')
+        total_sites = cursor.fetchone()[0]
+        
+        cursor.execute('SELECT COUNT(*) FROM price_history')
+        total_data_points = cursor.fetchone()[0]
+        
+        cursor.execute('SELECT AVG(price) FROM price_history WHERE price > 0')
+        avg_price = cursor.fetchone()[0] or 0
+        
+        cursor.execute('SELECT MIN(price), MAX(price) FROM price_history WHERE price > 0')
+        price_range = cursor.fetchone()
+        min_price, max_price = price_range if price_range[0] else (0, 0)
+        
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'summary': {
+                'total_sites': total_sites,
+                'total_data_points': total_data_points,
+                'average_price': round(avg_price, 2),
+                'price_range': {
+                    'min': min_price,
+                    'max': max_price
+                }
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Analytics summary error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
