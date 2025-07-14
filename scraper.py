@@ -41,8 +41,10 @@ class WebScraper:
             'INSERT INTO monitored_sites (name, url, price_selector) VALUES (?, ?, ?)',
             (name, url, price_selector)
         )
+        site_id = cursor.lastrowid
         conn.commit()
         conn.close()
+        return site_id
     
     def scrape_price(self, url, price_selector):
         try:
@@ -100,7 +102,19 @@ class WebScraper:
                     'INSERT INTO price_history (site_id, price) VALUES (?, ?)',
                     (site_id, price)
                 )
-                results.append(f"{name}: ${price}")
+                results.append({
+                    'site_id': site_id,
+                    'name': name,
+                    'price': price,
+                    'status': 'success'
+                })
+            else:
+                results.append({
+                    'site_id': site_id,
+                    'name': name,
+                    'price': None,
+                    'status': 'failed'
+                })
             time.sleep(2)  # Be respectful to websites
         
         conn.commit()
@@ -117,4 +131,25 @@ class WebScraper:
         ''', (site_id,))
         history = cursor.fetchall()
         conn.close()
-        return history
+        
+        # Convert to list of dictionaries for better API response
+        return [{'price': row[0], 'scraped_at': row[1]} for row in history]
+    
+    # Added method for API compatibility
+    def get_monitored_sites(self):
+        """Get all monitored sites - needed for the API"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('SELECT id, name, url, price_selector FROM monitored_sites')
+        sites = cursor.fetchall()
+        conn.close()
+        
+        # Convert to list of dictionaries for better API response
+        return [
+            {
+                'id': row[0], 
+                'name': row[1], 
+                'url': row[2], 
+                'price_selector': row[3]
+            } for row in sites
+        ]
