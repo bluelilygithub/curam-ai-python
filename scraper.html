@@ -16,14 +16,20 @@
     </div>
     
     <!-- Action Buttons -->
-    <div style="text-align: center; margin: 20px 0;">
-        <button onclick="scrapeNow()" class="btn btn-success" id="scrape-btn" disabled>
-            Scrape All Sites Now
-        </button>
-        <button onclick="refreshSites()" class="btn btn-info" id="refresh-btn" disabled>
-            Refresh Sites List
-        </button>
-    </div>
+<div style="text-align: center; margin: 20px 0;">
+    <button onclick="scrapeNow()" class="btn btn-success" id="scrape-btn" disabled>
+        Scrape All Sites Now
+    </button>
+    <button onclick="refreshSites()" class="btn btn-info" id="refresh-btn" disabled>
+        Refresh Sites List
+    </button>
+    <button onclick="generateDemoData()" class="btn btn-warning" id="demo-btn" disabled>
+        Generate Demo Data
+    </button>
+    <button onclick="viewAnalytics()" class="btn" id="analytics-btn" disabled style="background: #6f42c1; color: white;">
+        View Analytics
+    </button>
+</div>
     
     <!-- Flash Messages -->
     <div id="flash-messages"></div>

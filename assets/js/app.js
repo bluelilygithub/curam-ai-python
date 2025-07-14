@@ -30,7 +30,7 @@ async function checkAPIHealth() {
         
         if (statusElement && statusText) {
             statusElement.className = 'alert alert-success';
-            statusText.innerHTML = `✅ API Connected - Status: ${health.status}`;
+            statusText.innerHTML = `API Connected - Status: ${health.status}`;
         }
         
         console.log('API Health:', health);
