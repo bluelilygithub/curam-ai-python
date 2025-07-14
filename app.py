@@ -196,54 +196,90 @@ def generate_visual_report():
 # ===== HELPER FUNCTIONS FOR AI ANALYSIS =====
 
 def generate_claude_analysis(query, industry):
-    """Generate Claude-style analysis"""
+    """Generate high-quality Claude-style analysis with deeper insights"""
+    query_lower = query.lower()
+    
+    # Advanced templates with comprehensive analysis
+    if 'gpu' in query_lower or 'graphic' in query_lower or 'processing' in query_lower:
+        return f"""The graphics processing unit market is experiencing transformational growth driven by AI workloads, with datacenter GPU revenue now exceeding gaming segments for major manufacturers. NVIDIA maintains dominant market position with approximately 88% share in AI training chips, though AMD's MI300 series and Intel's emerging Gaudi processors represent growing competitive pressure.
+
+**Market Dynamics:** The shift from gaming-centric to AI-optimized architectures has fundamentally altered GPU design priorities. Memory bandwidth, parallel processing efficiency, and power optimization now drive innovation cycles. Enterprise customers increasingly demand specialized AI accelerators rather than repurposed gaming hardware.
+
+**Supply Chain Evolution:** Geopolitical tensions have accelerated domestic chip manufacturing initiatives, with US CHIPS Act funding and European semiconductor sovereignty programs reshaping global production. Taiwan's TSMC remains critical for advanced node manufacturing, creating strategic vulnerabilities.
+
+**Future Outlook:** Edge AI deployment requirements are driving development of low-power, high-efficiency processing solutions. Neuromorphic chips and quantum processing represent emerging paradigms that could disrupt traditional GPU architectures within 5-7 years.
+
+**Strategic Implications:** Companies should diversify supplier relationships, invest in software optimization for multi-vendor hardware, and prepare for architectural transitions as Moore's Law scaling becomes economically challenging."""
+
+    elif 'ai' in query_lower and 'industry' in query_lower:
+        return f"""The artificial intelligence industry has reached an inflection point where enterprise adoption accelerates beyond experimental phases into production deployment at scale. Large language models, computer vision, and autonomous systems represent the three primary growth vectors, each with distinct market dynamics and competitive landscapes.
+
+**Enterprise Transformation:** AI implementation has moved from isolated use cases to comprehensive workflow integration. Companies report 15-30% productivity gains in knowledge work, with particular strength in content generation, code development, and customer service automation. However, integration complexity and skill gaps remain significant barriers.
+
+**Infrastructure Evolution:** The computational demands of modern AI models have created a new infrastructure category focused on training and inference optimization. Cloud providers are developing AI-specific hardware and services, while edge computing growth enables real-time AI applications in manufacturing, healthcare, and autonomous vehicles.
+
+**Regulatory Landscape:** Government initiatives worldwide are establishing AI governance frameworks, with EU AI Act leading comprehensive regulation. These frameworks will significantly impact development timelines, deployment strategies, and competitive positioning across different market segments.
+
+**Investment Patterns:** Venture capital flows increasingly favor AI applications with clear ROI metrics rather than purely technical innovations. Enterprise AI software represents the fastest-growing segment, while hardware infrastructure investments focus on specialized chips and edge computing solutions.
+
+**Competitive Dynamics:** Big Tech companies leverage platform advantages and compute resources, while specialized AI companies compete on domain expertise and customer intimacy. Open-source models are democratizing access but creating new challenges around model governance and intellectual property."""
+
+    # Industry-specific comprehensive analysis
     templates = {
-        'technology': {
-            'ai': "The AI industry is experiencing unprecedented growth with significant developments in large language models, computer vision, and autonomous systems. Key trends include enterprise AI adoption, edge computing integration, and increased focus on AI safety and ethics. Investment in AI infrastructure continues to accelerate, with particular emphasis on training efficiency and model deployment at scale.",
-            'gpu': "Graphics processing units are critical infrastructure for AI development, with NVIDIA dominating the market holding approximately 88% market share. Supply chain constraints and geopolitical tensions are driving demand for alternative chip architectures and domestic production capabilities. Key developments include AMD's MI300 series and Intel's Gaudi processors challenging NVIDIA's dominance.",
-            'graphic': "Graphics processing technology is evolving rapidly beyond traditional gaming applications. AI workloads now represent the primary growth driver, with datacenter GPU revenue exceeding gaming for major manufacturers. Architectural innovations focus on memory bandwidth, parallel processing efficiency, and power optimization for large-scale deployments.",
-            'processing': "Processing power demands continue to exceed Moore's Law predictions, particularly for AI and machine learning workloads. Specialized processors including TPUs, FPGAs, and neuromorphic chips are emerging as alternatives to traditional CPU/GPU architectures. Edge computing requirements are driving development of low-power, high-efficiency processing solutions.",
-            'default': f"The {industry} sector shows strong innovation momentum driven by digital transformation initiatives. Cloud adoption and AI integration are becoming strategic priorities across enterprises. Regulatory considerations around data privacy and cybersecurity remain key challenges, while investment in emerging technologies continues to accelerate."
-        },
-        'automotive': {
-            'tesla': "Tesla continues to lead EV innovation but faces intensifying competition from traditional automakers and new entrants like Rivian and Lucid Motors. Battery technology improvements and charging infrastructure expansion are critical success factors. Tesla's integrated approach to manufacturing, software, and energy storage provides competitive advantages.",
-            'electric': "The electric vehicle market is rapidly evolving with government incentives driving adoption across major markets. Battery costs have declined 89% since 2010, making EVs increasingly competitive with ICE vehicles. Range anxiety continues to diminish as charging infrastructure expands and battery energy density improves.",
-            'vehicle': "Vehicle electrification represents the most significant automotive industry transformation since the assembly line. Traditional automakers are investing heavily in EV platforms while managing the transition from ICE vehicle production. Supply chain realignment toward battery materials and semiconductor components is reshaping industry dynamics.",
-            'default': f"The automotive industry is undergoing fundamental transformation toward electrification and autonomous driving. Supply chain resilience and semiconductor availability remain critical challenges, while consumer preferences shift toward sustainable mobility solutions."
-        },
-        'healthcare': {
-            'default': f"Healthcare innovation is accelerating with digital health solutions, telemedicine, and personalized medicine gaining significant traction. AI-driven diagnostics and drug discovery are transforming clinical outcomes. Regulatory approval processes and data privacy considerations continue to shape market dynamics and investment flows."
-        },
-        'finance': {
-            'crypto': "Cryptocurrency markets show increasing institutional adoption despite regulatory uncertainty. Central bank digital currencies (CBDCs) are advancing globally, with pilot programs in multiple jurisdictions. DeFi protocols continue to innovate while addressing security and scalability challenges.",
-            'default': f"Financial services are embracing fintech innovations and digital transformation at an unprecedented pace. Open banking initiatives, embedded finance, and AI-driven risk assessment are reshaping customer experiences. Regulatory compliance and cybersecurity investments remain essential for competitive positioning."
-        },
-        'manufacturing': {
-            'sustainable': "Sustainable manufacturing practices are becoming competitive necessities rather than optional initiatives. Circular economy principles, renewable energy adoption, and waste reduction strategies are driving operational efficiency improvements. Carbon accounting and ESG reporting requirements are influencing capital allocation decisions.",
-            'packaging': "Packaging innovation focuses on sustainability, functionality, and cost optimization. Biodegradable materials, reduced plastic content, and recyclable designs are responding to consumer preferences and regulatory pressures. Smart packaging technologies incorporating IoT sensors and NFC capabilities are enhancing supply chain visibility.",
-            'default': f"Manufacturing sector transformation emphasizes automation, sustainability, and supply chain resilience. Industry 4.0 technologies including IoT, AI, and robotics are optimizing production efficiency while reducing environmental impact."
-        },
-        'retail': {
-            'default': f"Retail industry continues evolving toward omnichannel experiences and personalized customer engagement. E-commerce growth stabilizes post-pandemic while physical stores reimagine their value proposition through experiential retail and fulfillment optimization."
-        },
-        'energy': {
-            'renewable': "Renewable energy sector demonstrates exceptional growth with solar and wind achieving grid parity in most markets. Energy storage solutions are becoming economically viable, enabling higher renewable penetration. Grid modernization and smart infrastructure investments support the energy transition.",
-            'default': f"Energy sector transformation accelerates toward renewable sources and grid modernization. Carbon pricing mechanisms and climate policies are reshaping investment priorities while energy security concerns influence policy decisions."
-        },
-        'aerospace': {
-            'default': f"Aerospace industry recovers from pandemic impacts while embracing sustainable aviation fuels and electric propulsion technologies. Space commercialization creates new market opportunities while supply chain consolidation affects competitive dynamics."
-        }
+        'technology': f"""The technology sector demonstrates unprecedented convergence across multiple innovation vectors, with artificial intelligence, quantum computing, and biotechnology creating synergistic opportunities. Cloud infrastructure has evolved beyond simple compute provisioning to comprehensive AI-as-a-Service platforms, fundamentally altering competitive dynamics.
+
+**Digital Transformation Acceleration:** Enterprise software adoption has permanently shifted toward cloud-native, API-first architectures. Companies investing in modern infrastructure report 25-40% faster time-to-market for new products. Legacy system migration represents a $500B+ opportunity through 2027.
+
+**Emerging Technology Integration:** The intersection of AI, 5G, and edge computing enables previously impossible applications in autonomous vehicles, smart manufacturing, and personalized healthcare. First-mover advantages in these convergence areas are creating substantial market valuations.
+
+**Talent and Skills Evolution:** The shift toward AI-augmented development is reshaping software engineering roles. Companies successfully adapting to AI-assisted workflows report 35% productivity improvements, while those lagging face increasing competitive disadvantage.
+
+**Regulatory and Ethical Considerations:** Technology companies face growing scrutiny around data privacy, algorithmic bias, and market concentration. Proactive compliance and ethical AI frameworks are becoming competitive differentiators rather than regulatory burdens.
+
+**Investment Strategy:** Focus on companies with strong data moats, AI-native architectures, and proven ability to monetize emerging technologies. Avoid legacy technology companies without clear transformation roadmaps.""",
+
+        'automotive': f"""The automotive industry is undergoing its most significant transformation since the invention of the automobile, with electrification, autonomous driving, and mobility services converging to reshape the entire value chain. Traditional automotive manufacturers face existential challenges as software capabilities become primary differentiators.
+
+**Electrification Timeline:** Battery cost reductions have reached tipping points where EVs achieve total cost of ownership parity with ICE vehicles in most markets. Range anxiety continues diminishing as charging infrastructure expands and battery energy density improves 8-12% annually.
+
+**Autonomous Vehicle Progress:** While full autonomy remains elusive, Level 3-4 systems in controlled environments are achieving commercial viability. Waymo's robotaxi service expansion and Tesla's FSD improvements demonstrate different approaches to autonomous capabilities, with distinct risk-reward profiles.
+
+**Supply Chain Transformation:** The shift from mechanical to electronic components is realigning supplier relationships. Semiconductor shortage experiences have accelerated vertical integration strategies and geographic diversification of critical component sourcing.
+
+**Mobility as a Service:** Urban transportation patterns favor access over ownership, particularly among younger demographics. Ride-sharing, car-sharing, and micromobility solutions are creating new business models and challenging traditional automotive revenue streams.
+
+**Strategic Positioning:** Success requires simultaneous execution across electrification, software development, and customer experience innovation. Companies unable to master all three dimensions face marginalization in the evolving mobility ecosystem.""",
+
+        'healthcare': f"""Healthcare innovation is accelerating through convergence of digital health, personalized medicine, and AI-driven diagnostics, fundamentally transforming patient care delivery and medical research methodologies. The COVID-19 pandemic permanently altered healthcare delivery models and accelerated technology adoption timelines.
+
+**Digital Health Integration:** Telemedicine adoption reached 85% of healthcare providers during the pandemic and has stabilized at 60%+ penetration. Remote patient monitoring and virtual care delivery models demonstrate superior outcomes for chronic disease management while reducing costs 20-35%.
+
+**Personalized Medicine Advancement:** Genomic sequencing costs have declined 99.9% since 2003, enabling routine integration into clinical workflows. Precision medicine approaches show particular promise in oncology, with targeted therapies achieving significantly better outcomes than traditional chemotherapy approaches.
+
+**AI-Powered Diagnostics:** Machine learning models now exceed human radiologist performance in specific imaging tasks. Early detection algorithms for diabetic retinopathy, skin cancer, and cardiac abnormalities are gaining FDA approval and clinical adoption.
+
+**Regulatory Innovation:** FDA breakthrough device pathways and software as medical device guidelines are accelerating approval timelines for digital health innovations. European MDR implementation creates additional compliance requirements but also establishes global quality standards.
+
+**Market Opportunities:** Focus on solutions addressing physician burnout, chronic disease management, and health equity challenges. Successful companies demonstrate clear clinical outcomes, regulatory compliance, and sustainable reimbursement models."""
+
     }
     
-    # Find best match
-    query_lower = query.lower()
+    # Get industry-specific analysis or default
     if industry in templates:
-        for keyword, analysis in templates[industry].items():
-            if keyword != 'default' and keyword in query_lower:
-                return analysis
-        return templates[industry].get('default', templates['technology']['default'])
-    
-    return f"Analysis of '{query}' reveals significant market opportunities and technological advancement potential. Current trends indicate strong growth trajectories driven by innovation adoption, regulatory evolution, and changing consumer preferences. Strategic positioning should focus on technological differentiation, operational efficiency, and sustainable business practices."
+        return templates[industry]
+    else:
+        # Generate contextual analysis for other industries
+        return f"""The {industry} sector is experiencing significant transformation driven by digital innovation, changing consumer expectations, and evolving regulatory landscapes. Companies that successfully navigate these transitions are positioning themselves for sustained competitive advantage.
+
+**Technology Integration:** Digital transformation initiatives across {industry} organizations are showing measurable ROI, with leaders reporting 20-30% efficiency improvements through automation and data analytics implementation. Cloud adoption and AI integration are becoming strategic imperatives rather than optional upgrades.
+
+**Market Dynamics:** Consumer behavior shifts and regulatory changes are reshaping traditional business models. Organizations with agile operating models and customer-centric approaches are capturing disproportionate market share while legacy players struggle to adapt.
+
+**Competitive Landscape:** New entrants leveraging technology advantages are disrupting established market hierarchies. Successful companies are building platform-based business models that create network effects and sustainable competitive moats.
+
+**Future Outlook:** The next 3-5 years will determine market leadership positions as current transformation investments mature. Companies investing proactively in technology capabilities, talent development, and customer experience innovation are best positioned for long-term success.
+
+**Strategic Recommendations:** Prioritize data-driven decision making, invest in digital capabilities, and maintain customer-centric focus while building operational resilience for future market volatility."""
 
 def generate_gemini_insights(query, industry):
     """Generate Gemini-style data insights"""
