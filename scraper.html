@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Web Scraper Dashboard</title>
+    <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+    <div class="nav">
+        <h2>Web Scraper Dashboard</h2>
+        <p style="color: #adb5bd; margin: 5px 0 0 0;">Monitor competitor websites and track price changes automatically</p>
+    </div>
+
+    <!-- API Status -->
+    <div id="api-status" class="api-status status-loading">
+        🔄 Connecting to API...
+    </div>
+    
+    <!-- Action Buttons -->
+    <div style="text-align: center; margin: 20px 0;">
+        <button onclick="scrapeNow()" class="btn btn-success" id="scrape-btn" disabled>
+            🔄 Scrape All Sites Now
+        </button>
+        <button onclick="refreshSites()" class="btn btn-info" id="refresh-btn" disabled>
+            📋 Refresh Sites List
+        </button>
+    </div>
+    
+    <!-- Flash Messages -->
+    <div id="flash-messages"></div>
+    
+    <!-- Results Display -->
+    <div id="results"></div>
+    
+    <!-- Add New Site Form -->
+    <div class="add-site-form">
+        <h3>Add New Site to Monitor</h3>
+        <form id="add-site-form">
+            <div class="form-group">
+                <label>Site Name:</label>
+                <input type="text" id="site-name" placeholder="e.g., Amazon - iPhone 15 Pro" required>
+                <small style="color: #6c757d;">Give this site a descriptive name</small>
+            </div>
+            <div class="form-group">
+                <label>Website URL:</label>
+                <input type="url" id="site-url" placeholder="https://www.example.com/product-page" required>
+                <small style="color: #6c757d;">Full URL to the product or page you want to monitor</small>
+            </div>
+            <div class="form-group">
+                <label>Price CSS Selector:</label>
+                <input type="text" id="price-selector" placeholder="e.g., .price, #price, .a-price-whole" required>
+                <small style="color: #6c757d;">CSS selector that targets the price element (inspect element to find this)</small>
+            </div>
+            <button type="submit" class="btn" id="add-site-btn" disabled>Add Site to Monitor</button>
+        </form>
+    </div>
+    
+    <!-- Monitored Sites List -->
+    <div style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <h3 style="margin-top: 0; color: #495057; border-bottom: 2px solid #28a745; padding-bottom: 10px;">
+            Monitored Sites
+        </h3>
+        <div id="sites-container">
+            <div class="loading">Loading monitored sites</div>
+        </div>
+    </div>
+
+    <script src="assets/js/scraper.js"></script>
+</body>
+</html>

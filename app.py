@@ -10,29 +10,41 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
 from reportlab.lib.styles import getSampleStyleSheet
 import os
+import sys
 from werkzeug.utils import secure_filename
-from scraper import WebScraper
 import sqlite3
 import json
 from datetime import datetime
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 # Configure CORS for your shared hosting domain
 CORS(app, origins=[
-    'https://your-domain.com',  # Replace with your shared hosting domain
-    'https://curam-ai.com.au',  # Your existing domain
+    'https://curam-ai.com.au',  # Your shared hosting domain
     'http://localhost:3000',
-    'http://localhost:8000'
+    'http://localhost:8000',
+    '*'  # Allow all for testing - remove in production
 ])
 
 UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
-# Initialize scraper
-scraper = WebScraper()
+# Initialize scraper with error handling
+scraper = None
+try:
+    from scraper import WebScraper
+    scraper = WebScraper()
+    logger.info("✅ Scraper initialized successfully")
+except Exception as e:
+    logger.error(f"❌ Scraper initialization failed: {str(e)}")
+    scraper = None
 
 @app.route('/')
 def index():
@@ -54,16 +66,51 @@ def index():
 
 @app.route('/health')
 def health():
-    return jsonify({
-        'status': 'healthy',
-        'timestamp': datetime.now().isoformat(),
-        'python_version': os.sys.version,
-        'dependencies': {
-            'flask': Flask.__version__,
-            'pandas': pd.__version__,
-            'matplotlib': matplotlib.__version__
+    try:
+        logger.info("Health check requested")
+        
+        # Basic response
+        response_data = {
+            'status': 'healthy',
+            'timestamp': datetime.now().isoformat(),
+            'python_version': sys.version.split()[0],
         }
-    })
+        
+        # Test Flask version
+        try:
+            response_data['flask_version'] = Flask.__version__
+        except Exception as e:
+            response_data['flask_error'] = str(e)
+        
+        # Test pandas
+        try:
+            response_data['pandas_version'] = pd.__version__
+        except Exception as e:
+            response_data['pandas_error'] = str(e)
+        
+        # Test matplotlib
+        try:
+            response_data['matplotlib_version'] = matplotlib.__version__
+        except Exception as e:
+            response_data['matplotlib_error'] = str(e)
+        
+        # Test scraper status
+        if scraper:
+            response_data['scraper_status'] = 'available'
+        else:
+            response_data['scraper_status'] = 'not available'
+        
+        logger.info(f"Health check successful: {response_data}")
+        return jsonify(response_data)
+        
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'error': str(e),
+            'error_type': type(e).__name__,
+            'timestamp': datetime.now().isoformat()
+        }), 500
 
 # CSV Upload and Analysis API
 @app.route('/api/upload-csv', methods=['POST'])
@@ -106,6 +153,7 @@ def upload_csv():
         })
         
     except Exception as e:
+        logger.error(f"CSV upload error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # Generate Report API
@@ -137,12 +185,17 @@ def generate_report_api():
         )
         
     except Exception as e:
+        logger.error(f"Report generation error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# Scraper APIs
+# Scraper APIs - Only available if scraper is working
 @app.route('/api/scraper/sites', methods=['GET'])
 def get_monitored_sites():
     try:
+        if not scraper:
+            return jsonify({'success': False, 'error': 'Scraper not available'}), 500
+        
+        # Get sites directly from database
         conn = sqlite3.connect('scraper.db')
         cursor = conn.cursor()
         cursor.execute('SELECT id, name, url, price_selector FROM monitored_sites')
@@ -154,11 +207,15 @@ def get_monitored_sites():
             'sites': sites
         })
     except Exception as e:
+        logger.error(f"Get sites error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/scraper/add-site', methods=['POST'])
 def add_site_api():
     try:
+        if not scraper:
+            return jsonify({'success': False, 'error': 'Scraper not available'}), 500
+        
         data = request.get_json()
         name = data.get('name')
         url = data.get('url')
@@ -167,18 +224,23 @@ def add_site_api():
         if not all([name, url, price_selector]):
             return jsonify({'success': False, 'error': 'Missing required fields'}), 400
         
-        scraper.add_site(name, url, price_selector)
+        site_id = scraper.add_site(name, url, price_selector)
         
         return jsonify({
             'success': True,
-            'message': f'Added {name} to monitoring list'
+            'message': f'Added {name} to monitoring list',
+            'site_id': site_id
         })
     except Exception as e:
+        logger.error(f"Add site error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/scraper/scrape-now', methods=['POST'])
 def scrape_now_api():
     try:
+        if not scraper:
+            return jsonify({'success': False, 'error': 'Scraper not available'}), 500
+        
         results = scraper.scrape_all_sites()
         return jsonify({
             'success': True,
@@ -186,11 +248,15 @@ def scrape_now_api():
             'timestamp': datetime.now().isoformat()
         })
     except Exception as e:
+        logger.error(f"Scrape now error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/scraper/price-history/<int:site_id>', methods=['GET'])
 def price_history_api(site_id):
     try:
+        if not scraper:
+            return jsonify({'success': False, 'error': 'Scraper not available'}), 500
+        
         history = scraper.get_price_history(site_id)
         return jsonify({
             'success': True,
@@ -198,6 +264,7 @@ def price_history_api(site_id):
             'history': history
         })
     except Exception as e:
+        logger.error(f"Price history error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # Chart Generation API
@@ -246,58 +313,65 @@ def generate_chart():
         })
         
     except Exception as e:
+        logger.error(f"Chart generation error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 def generate_report(csv_file):
     """Generate PDF report from CSV file"""
-    # Read CSV
-    df = pd.read_csv(csv_file)
-    
-    # Basic analysis
-    total_rows = len(df)
-    columns = list(df.columns)
-    
-    # Create a simple chart
-    plt.figure(figsize=(10, 6))
-    if len(df.columns) > 1:
-        numeric_cols = df.select_dtypes(include=['number']).columns
-        if len(numeric_cols) > 0:
-            df[numeric_cols[0]].hist()
-            plt.title(f'Distribution of {numeric_cols[0]}')
-            plt.xlabel(numeric_cols[0])
-            plt.ylabel('Frequency')
-    
-    # Save chart to bytes
-    img_buffer = io.BytesIO()
-    plt.savefig(img_buffer, format='png', bbox_inches='tight')
-    img_buffer.seek(0)
-    plt.close()
-    
-    # Create PDF report
-    report_filename = f'report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'
-    doc = SimpleDocTemplate(report_filename, pagesize=letter)
-    styles = getSampleStyleSheet()
-    story = []
-    
-    # Title
-    title = Paragraph("Data Analysis Report", styles['Title'])
-    story.append(title)
-    story.append(Spacer(1, 12))
-    
-    # Summary
-    summary = Paragraph(f"<b>Data Summary:</b><br/>Total Rows: {total_rows}<br/>Columns: {', '.join(columns)}", styles['Normal'])
-    story.append(summary)
-    story.append(Spacer(1, 12))
-    
-    # Add chart
-    if len(df.select_dtypes(include=['number']).columns) > 0:
-        img = Image(img_buffer, width=400, height=240)
-        story.append(img)
-    
-    doc.build(story)
-    return report_filename
+    try:
+        # Read CSV
+        df = pd.read_csv(csv_file)
+        
+        # Basic analysis
+        total_rows = len(df)
+        columns = list(df.columns)
+        
+        # Create a simple chart
+        plt.figure(figsize=(10, 6))
+        if len(df.columns) > 1:
+            numeric_cols = df.select_dtypes(include=['number']).columns
+            if len(numeric_cols) > 0:
+                df[numeric_cols[0]].hist()
+                plt.title(f'Distribution of {numeric_cols[0]}')
+                plt.xlabel(numeric_cols[0])
+                plt.ylabel('Frequency')
+        
+        # Save chart to bytes
+        img_buffer = io.BytesIO()
+        plt.savefig(img_buffer, format='png', bbox_inches='tight')
+        img_buffer.seek(0)
+        plt.close()
+        
+        # Create PDF report
+        report_filename = f'report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'
+        doc = SimpleDocTemplate(report_filename, pagesize=letter)
+        styles = getSampleStyleSheet()
+        story = []
+        
+        # Title
+        title = Paragraph("Data Analysis Report", styles['Title'])
+        story.append(title)
+        story.append(Spacer(1, 12))
+        
+        # Summary
+        summary = Paragraph(f"<b>Data Summary:</b><br/>Total Rows: {total_rows}<br/>Columns: {', '.join(columns)}", styles['Normal'])
+        story.append(summary)
+        story.append(Spacer(1, 12))
+        
+        # Add chart
+        if len(df.select_dtypes(include=['number']).columns) > 0:
+            img = Image(img_buffer, width=400, height=240)
+            story.append(img)
+        
+        doc.build(story)
+        return report_filename
+        
+    except Exception as e:
+        logger.error(f"PDF generation error: {str(e)}")
+        raise e
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('FLASK_ENV', 'production') == 'development'
+    logger.info(f"Starting Flask app on port {port}")
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
