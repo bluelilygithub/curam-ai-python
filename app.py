@@ -19,6 +19,7 @@ import logging
 import requests
 import time
 import random
+import re
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -29,9 +30,9 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 # Configure CORS for your shared hosting domain
 CORS(app, origins=[
-    'https://curam-ai.com.au',  # Your shared hosting domain
-    'https://curam-ai.com.au/python-hub/',     # Replace with actual domain where HTML is hosted
-    'https://curam-ai.com.au/ai-intelligence/',  # New AI intelligence platform
+    'https://curam-ai.com.au',
+    'https://curam-ai.com.au/python-hub/',
+    'https://curam-ai.com.au/ai-intelligence/',
     'http://localhost:3000',
     'http://localhost:8000',
     '*'  # Allow all for testing - remove in production
@@ -46,34 +47,33 @@ scraper = None
 try:
     from scraper import WebScraper
     scraper = WebScraper()
-    logger.info("✅ Scraper initialized successfully")
+    logger.info("Scraper initialized successfully")
 except Exception as e:
-    logger.error(f"❌ Scraper initialization failed: {str(e)}")
+    logger.error(f"Scraper initialization failed: {str(e)}")
     scraper = None
 
 @app.route('/')
 def index():
     return jsonify({
-        'name': 'Python Data Analytics & AI Intelligence API',
-        'version': '2.0.0',
+        'name': 'Curam AI - Intelligence & Analytics API',
+        'version': '2.1.0',
         'description': 'Flask API with pandas, matplotlib, web scraping, PDF generation, and AI intelligence',
         'endpoints': {
             'health': '/health',
             'upload_csv': 'POST /api/upload-csv',
             'generate_report': 'POST /api/generate-report',
-            'add_site': 'POST /api/scraper/add-site',
-            'scrape_now': 'POST /api/scraper/scrape-now',
-            'price_history': 'GET /api/scraper/price-history/<site_id>',
-            'get_sites': 'GET /api/scraper/sites',
-            'analytics_summary': 'GET /api/analytics/summary',
-            'price_comparison': 'GET /api/analytics/price-comparison',
-            'price_trends': 'GET /api/analytics/price-trends',
-            'simulate_data': 'POST /api/simulate-data',
             'intelligence_pipeline': 'POST /api/full-intelligence-pipeline',
-            'visual_report': 'POST /api/generate-visual-report'
+            'visual_report': 'POST /api/generate-visual-report',
+            'scraper_apis': '/api/scraper/*',
+            'analytics': '/api/analytics/*'
         },
         'status': 'running',
-        'features': ['CSV Analysis', 'Web Scraping', 'AI Intelligence', 'Visual Reports']
+        'features': ['CSV Analysis', 'Web Scraping', 'AI Intelligence', 'Visual Reports'],
+        'ai_services': {
+            'claude': 'Available (simulated)',
+            'gemini': 'Available (simulated)', 
+            'stability_ai': 'Available (simulated)'
+        }
     })
 
 @app.route('/health')
@@ -81,39 +81,26 @@ def health():
     try:
         logger.info("Health check requested")
         
-        # Basic response
         response_data = {
             'status': 'healthy',
             'timestamp': datetime.now().isoformat(),
             'python_version': sys.version.split()[0],
+            'services': {
+                'flask': True,
+                'pandas': True,
+                'matplotlib': True,
+                'scraper': scraper is not None,
+                'ai_intelligence': True
+            }
         }
         
-        # Test Flask version
+        # Test core libraries
         try:
             response_data['flask_version'] = Flask.__version__
-        except Exception as e:
-            response_data['flask_error'] = str(e)
-        
-        # Test pandas
-        try:
             response_data['pandas_version'] = pd.__version__
-        except Exception as e:
-            response_data['pandas_error'] = str(e)
-        
-        # Test matplotlib
-        try:
             response_data['matplotlib_version'] = matplotlib.__version__
         except Exception as e:
-            response_data['matplotlib_error'] = str(e)
-        
-        # Test scraper status
-        if scraper:
-            response_data['scraper_status'] = 'available'
-        else:
-            response_data['scraper_status'] = 'not available'
-        
-        # Add AI intelligence status
-        response_data['ai_intelligence'] = 'available'
+            response_data['library_error'] = str(e)
         
         logger.info(f"Health check successful: {response_data}")
         return jsonify(response_data)
@@ -123,7 +110,6 @@ def health():
         return jsonify({
             'status': 'error',
             'error': str(e),
-            'error_type': type(e).__name__,
             'timestamp': datetime.now().isoformat()
         }), 500
 
@@ -131,7 +117,7 @@ def health():
 
 @app.route('/api/full-intelligence-pipeline', methods=['POST'])
 def full_intelligence_pipeline():
-    """Complete AI analysis pipeline"""
+    """Complete AI analysis pipeline with enhanced responses"""
     try:
         data = request.get_json()
         query = data.get('query', 'Unknown query')
@@ -139,21 +125,26 @@ def full_intelligence_pipeline():
         
         logger.info(f"Intelligence analysis request: {query} ({industry})")
         
-        # Simulate processing time for realistic demo
-        time.sleep(2)
+        # Simulate realistic processing time
+        time.sleep(random.uniform(1.5, 3.0))
         
-        # Generate realistic response based on query and industry
-        claude_analysis = generate_claude_analysis(query, industry)
-        gemini_insights = generate_gemini_insights(query, industry)
+        # Generate enhanced AI responses
+        claude_analysis = generate_enhanced_claude_analysis(query, industry)
+        gemini_insights = generate_enhanced_gemini_insights(query, industry)
+        
+        # Simulate data source analysis
+        sources_analyzed = simulate_data_sources(query, industry)
         
         response = {
             'success': True,
             'query': query,
             'industry': industry,
-            'sources_analyzed': 12 + (len(query) % 8),  # Variable number 12-19
+            'sources_analyzed': sources_analyzed['count'],
+            'source_details': sources_analyzed['sources'],
             'claude_analysis': claude_analysis,
             'gemini_insights': gemini_insights,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now().isoformat(),
+            'processing_time': round(random.uniform(1.5, 3.0), 2)
         }
         
         logger.info(f"Intelligence analysis completed for: {query}")
@@ -193,74 +184,74 @@ def generate_visual_report():
             'error': str(e)
         }), 500
 
-# ===== HELPER FUNCTIONS FOR AI ANALYSIS =====
+# ===== ENHANCED AI ANALYSIS FUNCTIONS =====
 
-def generate_claude_analysis(query, industry):
+def generate_enhanced_claude_analysis(query, industry):
     """Generate high-quality Claude-style analysis with deeper insights"""
     query_lower = query.lower()
     
-    # Advanced templates with comprehensive analysis
+    # Enhanced templates with comprehensive analysis
     if 'gpu' in query_lower or 'graphic' in query_lower or 'processing' in query_lower:
-        return f"""The graphics processing unit market is experiencing transformational growth driven by AI workloads, with datacenter GPU revenue now exceeding gaming segments for major manufacturers. NVIDIA maintains dominant market position with approximately 88% share in AI training chips, though AMD's MI300 series and Intel's emerging Gaudi processors represent growing competitive pressure.
+        return """The graphics processing unit market is experiencing transformational growth driven by AI workloads, with datacenter GPU revenue now exceeding gaming segments for major manufacturers. NVIDIA maintains dominant market position with approximately 88% share in AI training chips, though AMD's MI300 series and Intel's emerging Gaudi processors represent growing competitive pressure.
 
-**Market Dynamics:** The shift from gaming-centric to AI-optimized architectures has fundamentally altered GPU design priorities. Memory bandwidth, parallel processing efficiency, and power optimization now drive innovation cycles. Enterprise customers increasingly demand specialized AI accelerators rather than repurposed gaming hardware.
+Market Dynamics: The shift from gaming-centric to AI-optimized architectures has fundamentally altered GPU design priorities. Memory bandwidth, parallel processing efficiency, and power optimization now drive innovation cycles. Enterprise customers increasingly demand specialized AI accelerators rather than repurposed gaming hardware.
 
-**Supply Chain Evolution:** Geopolitical tensions have accelerated domestic chip manufacturing initiatives, with US CHIPS Act funding and European semiconductor sovereignty programs reshaping global production. Taiwan's TSMC remains critical for advanced node manufacturing, creating strategic vulnerabilities.
+Supply Chain Evolution: Geopolitical tensions have accelerated domestic chip manufacturing initiatives, with US CHIPS Act funding and European semiconductor sovereignty programs reshaping global production. Taiwan's TSMC remains critical for advanced node manufacturing, creating strategic vulnerabilities.
 
-**Future Outlook:** Edge AI deployment requirements are driving development of low-power, high-efficiency processing solutions. Neuromorphic chips and quantum processing represent emerging paradigms that could disrupt traditional GPU architectures within 5-7 years.
+Future Outlook: Edge AI deployment requirements are driving development of low-power, high-efficiency processing solutions. Neuromorphic chips and quantum processing represent emerging paradigms that could disrupt traditional GPU architectures within 5-7 years.
 
-**Strategic Implications:** Companies should diversify supplier relationships, invest in software optimization for multi-vendor hardware, and prepare for architectural transitions as Moore's Law scaling becomes economically challenging."""
+Strategic Implications: Companies should diversify supplier relationships, invest in software optimization for multi-vendor hardware, and prepare for architectural transitions as Moore's Law scaling becomes economically challenging."""
 
     elif 'ai' in query_lower and 'industry' in query_lower:
-        return f"""The artificial intelligence industry has reached an inflection point where enterprise adoption accelerates beyond experimental phases into production deployment at scale. Large language models, computer vision, and autonomous systems represent the three primary growth vectors, each with distinct market dynamics and competitive landscapes.
+        return """The artificial intelligence industry has reached an inflection point where enterprise adoption accelerates beyond experimental phases into production deployment at scale. Large language models, computer vision, and autonomous systems represent the three primary growth vectors, each with distinct market dynamics and competitive landscapes.
 
-**Enterprise Transformation:** AI implementation has moved from isolated use cases to comprehensive workflow integration. Companies report 15-30% productivity gains in knowledge work, with particular strength in content generation, code development, and customer service automation. However, integration complexity and skill gaps remain significant barriers.
+Enterprise Transformation: AI implementation has moved from isolated use cases to comprehensive workflow integration. Companies report 15-30% productivity gains in knowledge work, with particular strength in content generation, code development, and customer service automation. However, integration complexity and skill gaps remain significant barriers.
 
-**Infrastructure Evolution:** The computational demands of modern AI models have created a new infrastructure category focused on training and inference optimization. Cloud providers are developing AI-specific hardware and services, while edge computing growth enables real-time AI applications in manufacturing, healthcare, and autonomous vehicles.
+Infrastructure Evolution: The computational demands of modern AI models have created a new infrastructure category focused on training and inference optimization. Cloud providers are developing AI-specific hardware and services, while edge computing growth enables real-time AI applications in manufacturing, healthcare, and autonomous vehicles.
 
-**Regulatory Landscape:** Government initiatives worldwide are establishing AI governance frameworks, with EU AI Act leading comprehensive regulation. These frameworks will significantly impact development timelines, deployment strategies, and competitive positioning across different market segments.
+Regulatory Landscape: Government initiatives worldwide are establishing AI governance frameworks, with EU AI Act leading comprehensive regulation. These frameworks will significantly impact development timelines, deployment strategies, and competitive positioning across different market segments.
 
-**Investment Patterns:** Venture capital flows increasingly favor AI applications with clear ROI metrics rather than purely technical innovations. Enterprise AI software represents the fastest-growing segment, while hardware infrastructure investments focus on specialized chips and edge computing solutions.
+Investment Patterns: Venture capital flows increasingly favor AI applications with clear ROI metrics rather than purely technical innovations. Enterprise AI software represents the fastest-growing segment, while hardware infrastructure investments focus on specialized chips and edge computing solutions.
 
-**Competitive Dynamics:** Big Tech companies leverage platform advantages and compute resources, while specialized AI companies compete on domain expertise and customer intimacy. Open-source models are democratizing access but creating new challenges around model governance and intellectual property."""
+Competitive Dynamics: Big Tech companies leverage platform advantages and compute resources, while specialized AI companies compete on domain expertise and customer intimacy. Open-source models are democratizing access but creating new challenges around model governance and intellectual property."""
 
     # Industry-specific comprehensive analysis
     templates = {
         'technology': f"""The technology sector demonstrates unprecedented convergence across multiple innovation vectors, with artificial intelligence, quantum computing, and biotechnology creating synergistic opportunities. Cloud infrastructure has evolved beyond simple compute provisioning to comprehensive AI-as-a-Service platforms, fundamentally altering competitive dynamics.
 
-**Digital Transformation Acceleration:** Enterprise software adoption has permanently shifted toward cloud-native, API-first architectures. Companies investing in modern infrastructure report 25-40% faster time-to-market for new products. Legacy system migration represents a $500B+ opportunity through 2027.
+Digital Transformation Acceleration: Enterprise software adoption has permanently shifted toward cloud-native, API-first architectures. Companies investing in modern infrastructure report 25-40% faster time-to-market for new products. Legacy system migration represents a $500B+ opportunity through 2027.
 
-**Emerging Technology Integration:** The intersection of AI, 5G, and edge computing enables previously impossible applications in autonomous vehicles, smart manufacturing, and personalized healthcare. First-mover advantages in these convergence areas are creating substantial market valuations.
+Emerging Technology Integration: The intersection of AI, 5G, and edge computing enables previously impossible applications in autonomous vehicles, smart manufacturing, and personalized healthcare. First-mover advantages in these convergence areas are creating substantial market valuations.
 
-**Talent and Skills Evolution:** The shift toward AI-augmented development is reshaping software engineering roles. Companies successfully adapting to AI-assisted workflows report 35% productivity improvements, while those lagging face increasing competitive disadvantage.
+Talent and Skills Evolution: The shift toward AI-augmented development is reshaping software engineering roles. Companies successfully adapting to AI-assisted workflows report 35% productivity improvements, while those lagging face increasing competitive disadvantage.
 
-**Regulatory and Ethical Considerations:** Technology companies face growing scrutiny around data privacy, algorithmic bias, and market concentration. Proactive compliance and ethical AI frameworks are becoming competitive differentiators rather than regulatory burdens.
+Regulatory and Ethical Considerations: Technology companies face growing scrutiny around data privacy, algorithmic bias, and market concentration. Proactive compliance and ethical AI frameworks are becoming competitive differentiators rather than regulatory burdens.
 
-**Investment Strategy:** Focus on companies with strong data moats, AI-native architectures, and proven ability to monetize emerging technologies. Avoid legacy technology companies without clear transformation roadmaps.""",
+Investment Strategy: Focus on companies with strong data moats, AI-native architectures, and proven ability to monetize emerging technologies. Avoid legacy technology companies without clear transformation roadmaps.""",
 
         'automotive': f"""The automotive industry is undergoing its most significant transformation since the invention of the automobile, with electrification, autonomous driving, and mobility services converging to reshape the entire value chain. Traditional automotive manufacturers face existential challenges as software capabilities become primary differentiators.
 
-**Electrification Timeline:** Battery cost reductions have reached tipping points where EVs achieve total cost of ownership parity with ICE vehicles in most markets. Range anxiety continues diminishing as charging infrastructure expands and battery energy density improves 8-12% annually.
+Electrification Timeline: Battery cost reductions have reached tipping points where EVs achieve total cost of ownership parity with ICE vehicles in most markets. Range anxiety continues diminishing as charging infrastructure expands and battery energy density improves 8-12% annually.
 
-**Autonomous Vehicle Progress:** While full autonomy remains elusive, Level 3-4 systems in controlled environments are achieving commercial viability. Waymo's robotaxi service expansion and Tesla's FSD improvements demonstrate different approaches to autonomous capabilities, with distinct risk-reward profiles.
+Autonomous Vehicle Progress: While full autonomy remains elusive, Level 3-4 systems in controlled environments are achieving commercial viability. Waymo's robotaxi service expansion and Tesla's FSD improvements demonstrate different approaches to autonomous capabilities, with distinct risk-reward profiles.
 
-**Supply Chain Transformation:** The shift from mechanical to electronic components is realigning supplier relationships. Semiconductor shortage experiences have accelerated vertical integration strategies and geographic diversification of critical component sourcing.
+Supply Chain Transformation: The shift from mechanical to electronic components is realigning supplier relationships. Semiconductor shortage experiences have accelerated vertical integration strategies and geographic diversification of critical component sourcing.
 
-**Mobility as a Service:** Urban transportation patterns favor access over ownership, particularly among younger demographics. Ride-sharing, car-sharing, and micromobility solutions are creating new business models and challenging traditional automotive revenue streams.
+Mobility as a Service: Urban transportation patterns favor access over ownership, particularly among younger demographics. Ride-sharing, car-sharing, and micromobility solutions are creating new business models and challenging traditional automotive revenue streams.
 
-**Strategic Positioning:** Success requires simultaneous execution across electrification, software development, and customer experience innovation. Companies unable to master all three dimensions face marginalization in the evolving mobility ecosystem.""",
+Strategic Positioning: Success requires simultaneous execution across electrification, software development, and customer experience innovation. Companies unable to master all three dimensions face marginalization in the evolving mobility ecosystem.""",
 
         'healthcare': f"""Healthcare innovation is accelerating through convergence of digital health, personalized medicine, and AI-driven diagnostics, fundamentally transforming patient care delivery and medical research methodologies. The COVID-19 pandemic permanently altered healthcare delivery models and accelerated technology adoption timelines.
 
-**Digital Health Integration:** Telemedicine adoption reached 85% of healthcare providers during the pandemic and has stabilized at 60%+ penetration. Remote patient monitoring and virtual care delivery models demonstrate superior outcomes for chronic disease management while reducing costs 20-35%.
+Digital Health Integration: Telemedicine adoption reached 85% of healthcare providers during the pandemic and has stabilized at 60%+ penetration. Remote patient monitoring and virtual care delivery models demonstrate superior outcomes for chronic disease management while reducing costs 20-35%.
 
-**Personalized Medicine Advancement:** Genomic sequencing costs have declined 99.9% since 2003, enabling routine integration into clinical workflows. Precision medicine approaches show particular promise in oncology, with targeted therapies achieving significantly better outcomes than traditional chemotherapy approaches.
+Personalized Medicine Advancement: Genomic sequencing costs have declined 99.9% since 2003, enabling routine integration into clinical workflows. Precision medicine approaches show particular promise in oncology, with targeted therapies achieving significantly better outcomes than traditional chemotherapy approaches.
 
-**AI-Powered Diagnostics:** Machine learning models now exceed human radiologist performance in specific imaging tasks. Early detection algorithms for diabetic retinopathy, skin cancer, and cardiac abnormalities are gaining FDA approval and clinical adoption.
+AI-Powered Diagnostics: Machine learning models now exceed human radiologist performance in specific imaging tasks. Early detection algorithms for diabetic retinopathy, skin cancer, and cardiac abnormalities are gaining FDA approval and clinical adoption.
 
-**Regulatory Innovation:** FDA breakthrough device pathways and software as medical device guidelines are accelerating approval timelines for digital health innovations. European MDR implementation creates additional compliance requirements but also establishes global quality standards.
+Regulatory Innovation: FDA breakthrough device pathways and software as medical device guidelines are accelerating approval timelines for digital health innovations. European MDR implementation creates additional compliance requirements but also establishes global quality standards.
 
-**Market Opportunities:** Focus on solutions addressing physician burnout, chronic disease management, and health equity challenges. Successful companies demonstrate clear clinical outcomes, regulatory compliance, and sustainable reimbursement models."""
+Market Opportunities: Focus on solutions addressing physician burnout, chronic disease management, and health equity challenges. Successful companies demonstrate clear clinical outcomes, regulatory compliance, and sustainable reimbursement models."""
 
     }
     
@@ -271,18 +262,18 @@ def generate_claude_analysis(query, industry):
         # Generate contextual analysis for other industries
         return f"""The {industry} sector is experiencing significant transformation driven by digital innovation, changing consumer expectations, and evolving regulatory landscapes. Companies that successfully navigate these transitions are positioning themselves for sustained competitive advantage.
 
-**Technology Integration:** Digital transformation initiatives across {industry} organizations are showing measurable ROI, with leaders reporting 20-30% efficiency improvements through automation and data analytics implementation. Cloud adoption and AI integration are becoming strategic imperatives rather than optional upgrades.
+Technology Integration: Digital transformation initiatives across {industry} organizations are showing measurable ROI, with leaders reporting 20-30% efficiency improvements through automation and data analytics implementation. Cloud adoption and AI integration are becoming strategic imperatives rather than optional upgrades.
 
-**Market Dynamics:** Consumer behavior shifts and regulatory changes are reshaping traditional business models. Organizations with agile operating models and customer-centric approaches are capturing disproportionate market share while legacy players struggle to adapt.
+Market Dynamics: Consumer behavior shifts and regulatory changes are reshaping traditional business models. Organizations with agile operating models and customer-centric approaches are capturing disproportionate market share while legacy players struggle to adapt.
 
-**Competitive Landscape:** New entrants leveraging technology advantages are disrupting established market hierarchies. Successful companies are building platform-based business models that create network effects and sustainable competitive moats.
+Competitive Landscape: New entrants leveraging technology advantages are disrupting established market hierarchies. Successful companies are building platform-based business models that create network effects and sustainable competitive moats.
 
-**Future Outlook:** The next 3-5 years will determine market leadership positions as current transformation investments mature. Companies investing proactively in technology capabilities, talent development, and customer experience innovation are best positioned for long-term success.
+Future Outlook: The next 3-5 years will determine market leadership positions as current transformation investments mature. Companies investing proactively in technology capabilities, talent development, and customer experience innovation are best positioned for long-term success.
 
-**Strategic Recommendations:** Prioritize data-driven decision making, invest in digital capabilities, and maintain customer-centric focus while building operational resilience for future market volatility."""
+Strategic Recommendations: Prioritize data-driven decision making, invest in digital capabilities, and maintain customer-centric focus while building operational resilience for future market volatility."""
 
-def generate_gemini_insights(query, industry):
-    """Generate Gemini-style data insights"""
+def generate_enhanced_gemini_insights(query, industry):
+    """Generate Gemini-style data insights with enhanced metrics"""
     # Generate realistic metrics based on industry and query
     base_growth = {'technology': 35, 'automotive': 25, 'healthcare': 20, 'finance': 30, 'manufacturing': 18, 'retail': 15, 'energy': 28, 'aerospace': 22}
     growth_rate = base_growth.get(industry, 25) + random.randint(-8, 12)
@@ -306,26 +297,50 @@ def generate_gemini_insights(query, industry):
     investment_change = growth_rate - random.randint(5, 12)
     adoption_rate = growth_rate // 2 + random.randint(-3, 8)
     cost_reduction = random.randint(8, 22)
+    efficiency_gain = random.randint(15, 35)
+    roi_improvement = random.randint(12, 28)
     
     templates = {
-        'technology': f"Technology sector analysis reveals {growth_rate}% YoY growth with sustained momentum. Key performance indicators: R&D investment increased {investment_change}%, enterprise adoption rates up {adoption_rate}%, implementation costs decreased {cost_reduction}%. Market concentration shows {players} major platforms controlling {market_share}% of total addressable market valued at ${market_size}B. Cloud infrastructure spending represents largest growth segment.",
+        'technology': f"Technology sector analysis reveals {growth_rate}% YoY growth with sustained momentum. Key performance indicators show R&D investment increased {investment_change}%, enterprise adoption rates up {adoption_rate}%, implementation costs decreased {cost_reduction}%. Operational efficiency improved {efficiency_gain}% while ROI increased {roi_improvement}%. Market concentration shows {players} major platforms controlling {market_share}% of total addressable market valued at ${market_size}B. Cloud infrastructure spending represents largest growth segment with 40% of total enterprise IT budgets.",
         
-        'automotive': f"Automotive industry data indicates {growth_rate}% expansion in electrification segment. Production capacity utilization up {investment_change}%, battery costs down {cost_reduction}%, charging infrastructure deployment up {adoption_rate}%. Market leadership distributed among {players} major manufacturers holding {market_share}% combined market share. Global EV market size approaching ${market_size}B with accelerating growth trajectory.",
+        'automotive': f"Automotive industry data indicates {growth_rate}% expansion in electrification segment with accelerating transformation metrics. Production capacity utilization up {investment_change}%, battery costs down {cost_reduction}%, charging infrastructure deployment up {adoption_rate}%. Manufacturing efficiency gained {efficiency_gain}% through automation while supply chain optimization delivered {roi_improvement}% cost savings. Market leadership distributed among {players} major manufacturers holding {market_share}% combined market share. Global EV market size approaching ${market_size}B with projected compound annual growth rate of 28%.",
         
-        'healthcare': f"Healthcare technology sector demonstrates {growth_rate}% annual growth driven by digital transformation. Telehealth adoption increased {adoption_rate}%, regulatory approval timelines reduced {cost_reduction}%, clinical trial efficiency up {investment_change}%. Market dynamics show {players} leading platforms capturing {market_share}% of digital health investments totaling ${market_size}B annually.",
+        'healthcare': f"Healthcare technology sector demonstrates {growth_rate}% annual growth driven by comprehensive digital transformation initiatives. Telehealth adoption increased {adoption_rate}%, regulatory approval timelines reduced {cost_reduction}%, clinical trial efficiency up {investment_change}%. Patient outcome improvements of {efficiency_gain}% while healthcare delivery costs decreased {roi_improvement}%. Market dynamics show {players} leading platforms capturing {market_share}% of digital health investments totaling ${market_size}B annually. Precision medicine segment represents fastest-growing subsector.",
         
-        'finance': f"Financial technology sector exhibits {growth_rate}% growth with strong fundamentals. Digital payment volumes increased {adoption_rate}%, customer acquisition costs reduced {cost_reduction}%, regulatory compliance efficiency up {investment_change}%. Competitive landscape features {players} dominant platforms controlling {market_share}% of fintech market valued at ${market_size}B.",
+        'finance': f"Financial technology sector exhibits {growth_rate}% growth with strong underlying fundamentals and regulatory support. Digital payment volumes increased {adoption_rate}%, customer acquisition costs reduced {cost_reduction}%, regulatory compliance efficiency up {investment_change}%. Transaction processing speed improved {efficiency_gain}% while operational costs decreased {roi_improvement}%. Competitive landscape features {players} dominant platforms controlling {market_share}% of fintech market valued at ${market_size}B. Open banking initiatives driving innovation acceleration.",
         
-        'manufacturing': f"Manufacturing sector shows {growth_rate}% efficiency improvements through automation adoption. Production optimization increased {investment_change}%, waste reduction achieved {cost_reduction}%, quality metrics improved {adoption_rate}%. Industry consolidation features {players} major players representing {market_share}% of advanced manufacturing market worth ${market_size}B.",
+        'manufacturing': f"Manufacturing sector shows {growth_rate}% efficiency improvements through comprehensive automation adoption and Industry 4.0 implementation. Production optimization increased {investment_change}%, waste reduction achieved {cost_reduction}%, quality metrics improved {adoption_rate}%. Overall equipment effectiveness up {efficiency_gain}% while total cost of ownership reduced {roi_improvement}%. Industry consolidation features {players} major players representing {market_share}% of advanced manufacturing market worth ${market_size}B. Smart factory investments leading transformation.",
         
-        'retail': f"Retail industry demonstrates {growth_rate}% omnichannel growth with digital integration. E-commerce conversion rates up {adoption_rate}%, customer acquisition costs down {cost_reduction}%, inventory efficiency improved {investment_change}%. Market share concentration shows {players} leading retailers controlling {market_share}% of online retail valued at ${market_size}B.",
+        'retail': f"Retail industry demonstrates {growth_rate}% omnichannel growth with seamless digital integration across customer touchpoints. E-commerce conversion rates up {adoption_rate}%, customer acquisition costs down {cost_reduction}%, inventory efficiency improved {investment_change}%. Customer satisfaction increased {efficiency_gain}% while operational costs optimized {roi_improvement}%. Market share concentration shows {players} leading retailers controlling {market_share}% of online retail valued at ${market_size}B. Personalization technology driving competitive advantage.",
         
-        'energy': f"Energy sector indicates {growth_rate}% renewable capacity growth annually. Grid efficiency improvements up {investment_change}%, energy storage costs reduced {cost_reduction}%, renewable penetration increased {adoption_rate}%. Market structure includes {players} major utilities controlling {market_share}% of clean energy investments totaling ${market_size}B.",
+        'energy': f"Energy sector indicates {growth_rate}% renewable capacity growth annually with accelerating clean energy transition. Grid efficiency improvements up {investment_change}%, energy storage costs reduced {cost_reduction}%, renewable penetration increased {adoption_rate}%. System reliability improved {efficiency_gain}% while operational expenses decreased {roi_improvement}%. Market structure includes {players} major utilities controlling {market_share}% of clean energy investments totaling ${market_size}B. Smart grid technologies enabling transformation.",
         
-        'aerospace': f"Aerospace industry shows {growth_rate}% recovery with innovation focus. Manufacturing efficiency up {investment_change}%, development costs optimized {cost_reduction}%, sustainable technology adoption increased {adoption_rate}%. Market concentration features {players} prime contractors holding {market_share}% of commercial aerospace market valued at ${market_size}B."
+        'aerospace': f"Aerospace industry shows {growth_rate}% recovery with strong innovation focus and sustainable technology integration. Manufacturing efficiency up {investment_change}%, development costs optimized {cost_reduction}%, sustainable technology adoption increased {adoption_rate}%. Production throughput improved {efficiency_gain}% while time-to-market reduced {roi_improvement}%. Market concentration features {players} prime contractors holding {market_share}% of commercial aerospace market valued at ${market_size}B. Next-generation propulsion systems driving innovation."
     }
     
-    return templates.get(industry, f"Cross-industry analysis demonstrates {growth_rate}% growth potential with strong market fundamentals. Performance metrics indicate {adoption_rate}% adoption acceleration, {cost_reduction}% cost optimization, and {investment_change}% investment increase. Competitive dynamics show {players} key market participants controlling {market_share}% of total addressable market valued at ${market_size}B.")
+    return templates.get(industry, f"Cross-industry analysis demonstrates {growth_rate}% growth potential with strong market fundamentals and technological innovation drivers. Performance metrics indicate {adoption_rate}% adoption acceleration, {cost_reduction}% cost optimization, and {investment_change}% investment increase. Operational efficiency improved {efficiency_gain}% while return on investment enhanced {roi_improvement}%. Competitive dynamics show {players} key market participants controlling {market_share}% of total addressable market valued at ${market_size}B. Digital transformation initiatives driving sustainable competitive advantages.")
+
+def simulate_data_sources(query, industry):
+    """Simulate data source collection for analysis"""
+    industry_sources = {
+        'technology': ['TechCrunch.com', 'VentureBeat.com', 'Ars Technica', 'The Verge', 'Wired.com', 'IEEE Spectrum', 'MIT Technology Review'],
+        'automotive': ['Automotive News', 'Motor Trend', 'Car and Driver', 'InsideEVs.com', 'Electrek.co', 'Reuters Autos', 'Automotive Dive'],
+        'healthcare': ['Modern Healthcare', 'Healthcare Dive', 'STAT News', 'MedTech Dive', 'BioPharma Dive', 'Health Affairs', 'NEJM.org'],
+        'finance': ['Financial Times', 'Bloomberg Markets', 'Reuters Finance', 'WSJ Markets', 'American Banker', 'Fintech News', 'CoinDesk.com'],
+        'manufacturing': ['Manufacturing.net', 'Industry Week', 'Plant Engineering', 'Automation World', 'Manufacturing Dive', 'Smart Industry', 'Assembly Magazine'],
+        'retail': ['Retail Dive', 'Chain Store Age', 'Progressive Grocer', 'Retail Leader', 'NRF.com', 'RetailWire.com', 'Modern Retail'],
+        'energy': ['Energy News', 'Renewable Energy World', 'Oil & Gas Journal', 'Utility Dive', 'Greentech Media', 'Energy Storage News', 'CleanTechnica'],
+        'aerospace': ['Aviation Week', 'FlightGlobal', 'Aerospace Daily', 'Space News', 'Defense News', 'Avionics International', 'Aerospace Testing']
+    }
+    
+    sources = industry_sources.get(industry, industry_sources['technology'])
+    count = random.randint(5, min(len(sources), 8))
+    selected_sources = random.sample(sources, count)
+    
+    return {
+        'count': count,
+        'sources': selected_sources
+    }
 
 # ===== ORIGINAL ENDPOINTS (UNCHANGED) =====
 
