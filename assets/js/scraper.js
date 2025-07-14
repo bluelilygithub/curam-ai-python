@@ -1,5 +1,5 @@
 // API Configuration - UPDATE THIS WITH YOUR RAILWAY URL
-const API_BASE = 'curam-ai-python-production.up.railway.app';
+const API_BASE = 'https://curam-ai-python-production.up.railway.app';
 
 // Global state
 let apiConnected = false;
@@ -24,7 +24,7 @@ async function checkAPIConnection() {
         
         if (data.status === 'healthy') {
             statusElement.className = 'api-status status-connected';
-            statusElement.innerHTML = '✅ Connected to API - Status: ' + data.status;
+            statusElement.innerHTML = 'Connected to API - Status: ' + data.status;
             apiConnected = true;
             enableButtons();
         } else {
@@ -32,7 +32,7 @@ async function checkAPIConnection() {
         }
     } catch (error) {
         statusElement.className = 'api-status status-error';
-        statusElement.innerHTML = '❌ Cannot connect to API: ' + error.message;
+        statusElement.innerHTML = 'Cannot connect to API: ' + error.message;
         apiConnected = false;
         disableButtons();
     }
@@ -178,14 +178,14 @@ async function handleAddSite(e) {
         const result = await response.json();
         
         if (result.success) {
-            showFlash(`✅ Successfully added "${formData.name}" to monitoring list!`, 'success');
+            showFlash(`Successfully added "${formData.name}" to monitoring list!`, 'success');
             document.getElementById('add-site-form').reset();
             loadSites(); // Refresh the sites list
         } else {
-            showFlash(`❌ Error adding site: ${result.error}`, 'error');
+            showFlash(`Error adding site: ${result.error}`, 'error');
         }
     } catch (error) {
-        showFlash(`❌ Error adding site: ${error.message}`, 'error');
+        showFlash(`Error adding site: ${error.message}`, 'error');
     } finally {
         addButton.disabled = false;
         addButton.innerHTML = 'Add Site to Monitor';
@@ -204,7 +204,7 @@ async function scrapeNow() {
     
     const scrapeButton = document.getElementById('scrape-btn');
     scrapeButton.disabled = true;
-    scrapeButton.innerHTML = '🔄 Scraping...';
+    scrapeButton.innerHTML = 'Scraping...';
     
     try {
         const response = await fetch(`${API_BASE}/api/scraper/scrape-now`, {
@@ -219,7 +219,7 @@ async function scrapeNow() {
             if (data.results && data.results.length > 0) {
                 resultHtml += '<ul>';
                 data.results.forEach(result => {
-                    const status = result.status === 'success' ? '✅' : '❌';
+                    const status = result.status === 'success' ? 'yes' : 'no';
                     const price = result.price ? `$${result.price}` : 'Failed to get price';
                     resultHtml += `<li><strong>${result.name}</strong>: ${status} ${price}</li>`;
                 });
@@ -239,7 +239,7 @@ async function scrapeNow() {
         resultsDiv.innerHTML = `<div class="flash flash-error">Scraping error: ${error.message}</div>`;
     } finally {
         scrapeButton.disabled = false;
-        scrapeButton.innerHTML = '🔄 Scrape All Sites Now';
+        scrapeButton.innerHTML = 'Scrape All Sites Now';
     }
 }
 
