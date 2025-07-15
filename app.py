@@ -1,4 +1,4 @@
-from flask import Flask, request, send_file, jsonify, render_template_string, send_from_directory
+from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -21,35 +21,6 @@ import time
 import random
 import re
 
-# LLM API imports with error handling
-try:
-    import anthropic
-    CLAUDE_AVAILABLE = True
-except ImportError:
-    CLAUDE_AVAILABLE = False
-    anthropic = None
-
-try:
-    import google.generativeai as genai
-    GEMINI_AVAILABLE = True
-except ImportError:
-    GEMINI_AVAILABLE = False
-    genai = None
-
-try:
-    from huggingface_hub import InferenceClient
-    HUGGINGFACE_AVAILABLE = True
-except ImportError:
-    HUGGINGFACE_AVAILABLE = False
-    InferenceClient = None
-
-try:
-    import feedparser
-    FEEDPARSER_AVAILABLE = True
-except ImportError:
-    FEEDPARSER_AVAILABLE = False
-    feedparser = None
-
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -70,43 +41,6 @@ CORS(app, origins=[
 UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
-
-# Initialize LLM clients
-claude_client = None
-gemini_model = None
-hf_client = None
-
-def init_llm_clients():
-    """Initialize LLM API clients with proper error handling"""
-    global claude_client, gemini_model, hf_client
-    
-    # Initialize Claude
-    if CLAUDE_AVAILABLE and os.getenv('CLAUDE_API_KEY'):
-        try:
-            claude_client = anthropic.Anthropic(api_key=os.getenv('CLAUDE_API_KEY'))
-            logger.info("Claude client initialized successfully")
-        except Exception as e:
-            logger.error(f"Claude initialization failed: {str(e)}")
-    
-    # Initialize Gemini
-    if GEMINI_AVAILABLE and os.getenv('GOOGLE_API_KEY'):
-        try:
-            genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
-            gemini_model = genai.GenerativeModel('gemini-pro')
-            logger.info("Gemini client initialized successfully")
-        except Exception as e:
-            logger.error(f"Gemini initialization failed: {str(e)}")
-    
-    # Initialize HuggingFace
-    if HUGGINGFACE_AVAILABLE and os.getenv('HUGGINGFACE_API_KEY'):
-        try:
-            hf_client = InferenceClient(api_key=os.getenv('HUGGINGFACE_API_KEY'))
-            logger.info("HuggingFace client initialized successfully")
-        except Exception as e:
-            logger.error(f"HuggingFace initialization failed: {str(e)}")
-
-# Initialize clients on startup
-init_llm_clients()
 
 # Initialize scraper with error handling
 scraper = None
@@ -131,15 +65,14 @@ def index():
             'intelligence_pipeline': 'POST /api/full-intelligence-pipeline',
             'visual_report': 'POST /api/generate-visual-report',
             'scraper_apis': '/api/scraper/*',
-            'analytics': '/api/analytics/*',
-            'llm_testing': '/demo'
+            'analytics': '/api/analytics/*'
         },
         'status': 'running',
-        'features': ['CSV Analysis', 'Web Scraping', 'AI Intelligence', 'Visual Reports', 'LLM Testing'],
+        'features': ['CSV Analysis', 'Web Scraping', 'AI Intelligence', 'Visual Reports'],
         'ai_services': {
-            'claude': 'Available' if claude_client else 'Not initialized',
-            'gemini': 'Available' if gemini_model else 'Not initialized',
-            'huggingface': 'Available' if hf_client else 'Not initialized'
+            'claude': 'Available (simulated)',
+            'gemini': 'Available (simulated)', 
+            'stability_ai': 'Available (simulated)'
         }
     })
 
@@ -158,29 +91,12 @@ def health():
                 'matplotlib': True,
                 'scraper': scraper is not None,
                 'ai_intelligence': True
-            },
-            'environment_variables': {
-                'CLAUDE_API_KEY': 'Set' if os.getenv('CLAUDE_API_KEY') else 'Missing',
-                'GOOGLE_API_KEY': 'Set' if os.getenv('GOOGLE_API_KEY') else 'Missing',
-                'HUGGINGFACE_API_KEY': 'Set' if os.getenv('HUGGINGFACE_API_KEY') else 'Missing',
-                'MAILCHANNELS_API_KEY': 'Set' if os.getenv('MAILCHANNELS_API_KEY') else 'Missing'
-            },
-            'library_availability': {
-                'anthropic': CLAUDE_AVAILABLE,
-                'google_generativeai': GEMINI_AVAILABLE,
-                'huggingface_hub': HUGGINGFACE_AVAILABLE,
-                'feedparser': FEEDPARSER_AVAILABLE
-            },
-            'client_status': {
-                'claude': claude_client is not None,
-                'gemini': gemini_model is not None,
-                'huggingface': hf_client is not None
             }
         }
         
         # Test core libraries
         try:
-            response_data['flask_running'] = True
+            response_data['flask_version'] = Flask.__version__
             response_data['pandas_version'] = pd.__version__
             response_data['matplotlib_version'] = matplotlib.__version__
         except Exception as e:
@@ -197,279 +113,7 @@ def health():
             'timestamp': datetime.now().isoformat()
         }), 500
 
-# ===== NEW LLM TESTING ENDPOINTS =====
-
-@app.route('/demo')
-def demo():
-    """Serve the LLM testing demo page"""
-    return render_template_string(DEMO_HTML)
-
-@app.route('/assets/<path:filename>')
-def serve_assets(filename):
-    """Serve static assets (CSS, JS) from assets directory"""
-    return send_from_directory('assets', filename)
-
-@app.route('/api/test-claude', methods=['POST'])
-def test_claude():
-    """Test Claude API connection"""
-    try:
-        if not claude_client:
-            return jsonify({
-                'success': False,
-                'error': 'Claude client not initialized',
-                'details': 'Check API key and library installation'
-            }), 500
-        
-        data = request.get_json()
-        test_message = data.get('message', 'Hello, this is a connection test.')
-        
-        response = claude_client.messages.create(
-            model="claude-3-haiku-20240307",
-            max_tokens=100,
-            messages=[
-                {"role": "user", "content": test_message}
-            ]
-        )
-        
-        return jsonify({
-            'success': True,
-            'service': 'Claude',
-            'response': response.content[0].text,
-            'timestamp': datetime.now().isoformat()
-        })
-        
-    except Exception as e:
-        logger.error(f"Claude test failed: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'service': 'Claude'
-        }), 500
-
-@app.route('/api/test-gemini', methods=['POST'])
-def test_gemini():
-    """Test Gemini API connection"""
-    try:
-        if not gemini_model:
-            return jsonify({
-                'success': False,
-                'error': 'Gemini client not initialized',
-                'details': 'Check API key and library installation'
-            }), 500
-        
-        data = request.get_json()
-        test_message = data.get('message', 'Hello, this is a connection test.')
-        
-        response = gemini_model.generate_content(test_message)
-        
-        return jsonify({
-            'success': True,
-            'service': 'Gemini',
-            'response': response.text,
-            'timestamp': datetime.now().isoformat()
-        })
-        
-    except Exception as e:
-        logger.error(f"Gemini test failed: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'service': 'Gemini'
-        }), 500
-
-@app.route('/api/test-huggingface', methods=['POST'])
-def test_huggingface():
-    """Test HuggingFace API connection"""
-    try:
-        if not hf_client:
-            return jsonify({
-                'success': False,
-                'error': 'HuggingFace client not initialized',
-                'details': 'Check API key and library installation'
-            }), 500
-        
-        data = request.get_json()
-        test_message = data.get('message', 'This is a test message for summarization.')
-        
-        # Test with a simple text generation model
-        response = hf_client.text_generation(
-            prompt=f"Summarize this text: {test_message}",
-            model="microsoft/DialoGPT-medium",
-            max_new_tokens=50
-        )
-        
-        return jsonify({
-            'success': True,
-            'service': 'HuggingFace',
-            'response': response,
-            'timestamp': datetime.now().isoformat()
-        })
-        
-    except Exception as e:
-        logger.error(f"HuggingFace test failed: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'service': 'HuggingFace'
-        }), 500
-
-@app.route('/api/test-feeds', methods=['GET'])
-def test_feeds():
-    """Test RSS feed parsing"""
-    try:
-        if not FEEDPARSER_AVAILABLE:
-            return jsonify({
-                'success': False,
-                'error': 'Feedparser not available',
-                'details': 'Check library installation'
-            }), 500
-        
-        # Test with a simple, reliable feed
-        test_feed_url = "https://www.realestate.com.au/news/rss/"
-        
-        feed = feedparser.parse(test_feed_url)
-        
-        if feed.bozo:
-            return jsonify({
-                'success': False,
-                'error': 'Feed parsing error',
-                'details': str(feed.bozo_exception)
-            }), 500
-        
-        # Get first few entries
-        entries = []
-        for entry in feed.entries[:3]:
-            entries.append({
-                'title': entry.get('title', 'No title'),
-                'link': entry.get('link', 'No link'),
-                'published': entry.get('published', 'No date')
-            })
-        
-        return jsonify({
-            'success': True,
-            'service': 'RSS Feeds',
-            'feed_title': feed.feed.get('title', 'Unknown'),
-            'entries_count': len(feed.entries),
-            'sample_entries': entries,
-            'timestamp': datetime.now().isoformat()
-        })
-        
-    except Exception as e:
-        logger.error(f"Feed test failed: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'service': 'RSS Feeds'
-        }), 500
-
-# Simple demo HTML (embedded for now)
-DEMO_HTML = '''
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LLM Connection Testing</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
-        .success { background: #d4edda; color: #155724; }
-        .error { background: #f8d7da; color: #721c24; }
-        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        button:hover { background: #0056b3; }
-        textarea { width: 100%; height: 200px; margin: 10px 0; padding: 10px; }
-        input { width: 100%; padding: 10px; margin: 10px 0; }
-    </style>
-</head>
-<body>
-    <h1>🤖 LLM Connection Testing</h1>
-    
-    <div id="status">Loading system status...</div>
-    
-    <input type="text" id="testMessage" placeholder="Enter test message" value="Tell me one interesting fact about Brisbane.">
-    
-    <div>
-        <button onclick="testLLM('claude')">Test Claude</button>
-        <button onclick="testLLM('gemini')">Test Gemini</button>
-        <button onclick="testLLM('huggingface')">Test HuggingFace</button>
-        <button onclick="testFeeds()">Test RSS Feeds</button>
-    </div>
-    
-    <textarea id="results" placeholder="Test results will appear here..."></textarea>
-
-    <script>
-        window.addEventListener('load', loadStatus);
-        
-        async function loadStatus() {
-            try {
-                const response = await fetch('/health');
-                const data = await response.json();
-                
-                document.getElementById('status').innerHTML = `
-                    <div class="success">
-                        <strong>System Status:</strong> ${data.status}<br>
-                        <strong>Libraries:</strong> anthropic: ${data.library_availability.anthropic}, 
-                        gemini: ${data.library_availability.google_generativeai}, 
-                        huggingface: ${data.library_availability.huggingface_hub}<br>
-                        <strong>Clients:</strong> Claude: ${data.client_status.claude ? 'Ready' : 'Not Ready'}, 
-                        Gemini: ${data.client_status.gemini ? 'Ready' : 'Not Ready'}, 
-                        HF: ${data.client_status.huggingface ? 'Ready' : 'Not Ready'}
-                    </div>
-                `;
-            } catch (error) {
-                document.getElementById('status').innerHTML = `<div class="error">Error loading status: ${error.message}</div>`;
-            }
-        }
-        
-        async function testLLM(service) {
-            const message = document.getElementById('testMessage').value;
-            const results = document.getElementById('results');
-            
-            results.value = `Testing ${service}...\\n`;
-            
-            try {
-                const response = await fetch(`/api/test-${service}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: message })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    results.value = `✅ ${data.service} Test Successful\\n\\nResponse: ${data.response}\\n\\nTimestamp: ${data.timestamp}`;
-                } else {
-                    results.value = `❌ ${data.service} Test Failed\\n\\nError: ${data.error}\\n\\nDetails: ${data.details || 'None'}`;
-                }
-            } catch (error) {
-                results.value = `❌ Network Error\\n\\nError: ${error.message}`;
-            }
-        }
-        
-        async function testFeeds() {
-            const results = document.getElementById('results');
-            
-            results.value = 'Testing RSS feeds...\\n';
-            
-            try {
-                const response = await fetch('/api/test-feeds');
-                const data = await response.json();
-                
-                if (data.success) {
-                    results.value = `✅ RSS Feed Test Successful\\n\\nFeed: ${data.feed_title}\\nEntries: ${data.entries_count}\\n\\nSample entries:\\n${data.sample_entries.map(e => `- ${e.title}`).join('\\n')}`;
-                } else {
-                    results.value = `❌ RSS Feed Test Failed\\n\\nError: ${data.error}\\n\\nDetails: ${data.details || 'None'}`;
-                }
-            } catch (error) {
-                results.value = `❌ Network Error\\n\\nError: ${error.message}`;
-            }
-        }
-    </script>
-</body>
-</html>
-'''
-
-# ===== AI INTELLIGENCE PLATFORM ENDPOINTS (UNCHANGED) =====
+# ===== AI INTELLIGENCE PLATFORM ENDPOINTS =====
 
 @app.route('/api/full-intelligence-pipeline', methods=['POST'])
 def full_intelligence_pipeline():
@@ -540,7 +184,7 @@ def generate_visual_report():
             'error': str(e)
         }), 500
 
-# ===== ENHANCED AI ANALYSIS FUNCTIONS (UNCHANGED) =====
+# ===== ENHANCED AI ANALYSIS FUNCTIONS =====
 
 def generate_enhanced_claude_analysis(query, industry):
     """Generate high-quality Claude-style analysis with deeper insights"""
