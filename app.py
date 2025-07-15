@@ -20,7 +20,6 @@ import requests
 import time
 import random
 import re
-import numpy as np
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -29,7 +28,7 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
-# Configure CORS
+# Configure CORS for your shared hosting domain
 CORS(app, origins=[
     'https://curam-ai.com.au',
     'https://curam-ai.com.au/python-hub/',
@@ -53,31 +52,27 @@ except Exception as e:
     logger.error(f"Scraper initialization failed: {str(e)}")
     scraper = None
 
-# ===== MAIN ROUTES =====
-
 @app.route('/')
 def index():
     return jsonify({
-        'name': 'Python Data Processing & Analytics Platform',
-        'version': '3.0.0',
-        'description': 'Real-time data scraping, processing & visualization with Python',
+        'name': 'Curam AI - Intelligence & Analytics API',
+        'version': '2.1.0',
+        'description': 'Flask API with pandas, matplotlib, web scraping, PDF generation, and AI intelligence',
         'endpoints': {
             'health': '/health',
-            'data_processing': 'POST /api/data-processing-pipeline',
             'upload_csv': 'POST /api/upload-csv',
             'generate_report': 'POST /api/generate-report',
+            'intelligence_pipeline': 'POST /api/full-intelligence-pipeline',
+            'visual_report': 'POST /api/generate-visual-report',
             'scraper_apis': '/api/scraper/*',
             'analytics': '/api/analytics/*'
         },
         'status': 'running',
-        'features': ['Real Data Processing', 'Web Scraping', 'Statistical Analysis', 'Data Visualization'],
-        'tech_stack': {
-            'pandas': 'Data processing & analysis',
-            'numpy': 'Numerical computations', 
-            'matplotlib': 'Data visualization',
-            'beautifulsoup': 'Web scraping',
-            'flask': 'API framework',
-            'sqlite': 'Data storage'
+        'features': ['CSV Analysis', 'Web Scraping', 'AI Intelligence', 'Visual Reports'],
+        'ai_services': {
+            'claude': 'Available (simulated)',
+            'gemini': 'Available (simulated)', 
+            'stability_ai': 'Available (simulated)'
         }
     })
 
@@ -94,24 +89,20 @@ def health():
                 'flask': True,
                 'pandas': True,
                 'matplotlib': True,
-                'numpy': True,
                 'scraper': scraper is not None,
-                'data_processing': True
+                'ai_intelligence': True
             }
         }
         
         # Test core libraries
         try:
-            response_data['versions'] = {
-                'flask': Flask.__version__,
-                'pandas': pd.__version__,
-                'matplotlib': matplotlib.__version__,
-                'numpy': np.__version__
-            }
+            response_data['flask_version'] = Flask.__version__
+            response_data['pandas_version'] = pd.__version__
+            response_data['matplotlib_version'] = matplotlib.__version__
         except Exception as e:
             response_data['library_error'] = str(e)
         
-        logger.info(f"Health check successful")
+        logger.info(f"Health check successful: {response_data}")
         return jsonify(response_data)
         
     except Exception as e:
@@ -122,241 +113,238 @@ def health():
             'timestamp': datetime.now().isoformat()
         }), 500
 
-# ===== MAIN DATA PROCESSING ENDPOINT =====
+# ===== AI INTELLIGENCE PLATFORM ENDPOINTS =====
 
-@app.route('/api/data-processing-pipeline', methods=['POST'])
-def data_processing_pipeline():
-    """Main endpoint - Real data processing with pandas and statistical analysis"""
+@app.route('/api/full-intelligence-pipeline', methods=['POST'])
+def full_intelligence_pipeline():
+    """Complete AI analysis pipeline with enhanced responses"""
     try:
         data = request.get_json()
-        query = data.get('query', 'Data analysis')
+        query = data.get('query', 'Unknown query')
         industry = data.get('industry', 'general')
         
-        logger.info(f"Data processing request: {query} ({industry})")
+        logger.info(f"Intelligence analysis request: {query} ({industry})")
         
-        # Get real scraped data
-        scraped_data = get_scraped_data()
+        # Simulate realistic processing time
+        time.sleep(random.uniform(1.5, 3.0))
         
-        # Process with pandas
-        pandas_analysis = process_with_pandas(scraped_data, query, industry)
+        # Generate enhanced AI responses
+        claude_analysis = generate_enhanced_claude_analysis(query, industry)
+        gemini_insights = generate_enhanced_gemini_insights(query, industry)
         
-        # Generate statistical insights  
-        statistical_insights = generate_statistical_analysis(scraped_data, query, industry)
-        
-        # Get processing stats
-        processing_stats = get_processing_stats(scraped_data)
+        # Simulate data source analysis
+        sources_analyzed = simulate_data_sources(query, industry)
         
         response = {
             'success': True,
             'query': query,
             'industry': industry,
-            'data_source': 'Real scraped data from monitored sites',
-            'processing_method': 'pandas DataFrame + numpy statistics',
-            'records_processed': len(scraped_data),
-            'pandas_analysis': pandas_analysis,
-            'statistical_insights': statistical_insights,
-            'processing_stats': processing_stats,
+            'sources_analyzed': sources_analyzed['count'],
+            'source_details': sources_analyzed['sources'],
+            'claude_analysis': claude_analysis,
+            'gemini_insights': gemini_insights,
             'timestamp': datetime.now().isoformat(),
-            'processing_time_ms': round(random.uniform(200, 800))
+            'processing_time': round(random.uniform(1.5, 3.0), 2)
         }
         
-        logger.info(f"Data processing completed: {len(scraped_data)} records")
+        logger.info(f"Intelligence analysis completed for: {query}")
         return jsonify(response)
         
     except Exception as e:
-        logger.error(f"Data processing error: {str(e)}")
+        logger.error(f"Intelligence pipeline error: {str(e)}")
         return jsonify({
             'success': False,
-            'error': str(e),
-            'fallback': 'Using sample data for demonstration'
+            'error': str(e)
         }), 500
 
-# ===== DATA PROCESSING FUNCTIONS =====
-
-def get_scraped_data():
-    """Get real data from scraper database or generate sample data"""
+@app.route('/api/generate-visual-report', methods=['POST'])
+def generate_visual_report():
+    """Generate visual charts for analysis"""
     try:
-        if not scraper:
-            return generate_sample_data()
+        data = request.get_json()
+        description = data.get('description', 'Analysis Chart')
         
-        conn = sqlite3.connect('scraper.db')
-        cursor = conn.cursor()
+        logger.info(f"Visual report request: {description}")
         
-        # Get recent data
-        cursor.execute('''
-            SELECT ms.name, ph.price, ph.scraped_at, ms.category
-            FROM monitored_sites ms
-            JOIN price_history ph ON ms.id = ph.site_id
-            WHERE ph.scraped_at > datetime('now', '-24 hours')
-            ORDER BY ph.scraped_at DESC
-            LIMIT 100
-        ''')
+        # For demo purposes, we'll return success without actual image generation
+        # In production, this would call Stability AI API
+        response = {
+            'success': True,
+            'description': description,
+            'image_data': None,  # Frontend will use placeholder chart
+            'timestamp': datetime.now().isoformat()
+        }
         
-        data = cursor.fetchall()
-        conn.close()
-        
-        if not data:
-            return generate_sample_data()
-        
-        return [{'name': row[0], 'price': row[1], 'timestamp': row[2], 'category': row[3]} for row in data]
+        return jsonify(response)
         
     except Exception as e:
-        logger.error(f"Error getting scraped data: {str(e)}")
-        return generate_sample_data()
+        logger.error(f"Visual generation error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
-def generate_sample_data():
-    """Generate realistic sample data for demonstration"""
-    companies = [
-        ('Commonwealth Bank', 102.50, 'finance'),
-        ('BHP Group', 45.20, 'mining'), 
-        ('CSL Limited', 285.30, 'healthcare'),
-        ('Westpac', 22.40, 'finance'),
-        ('ANZ Bank', 27.80, 'finance'),
-        ('Woolworths', 35.60, 'retail'),
-        ('Telstra', 3.95, 'telecommunications')
-    ]
+# ===== ENHANCED AI ANALYSIS FUNCTIONS =====
+
+def generate_enhanced_claude_analysis(query, industry):
+    """Generate high-quality Claude-style analysis with deeper insights"""
+    query_lower = query.lower()
     
-    data = []
-    for company, base_price, category in companies:
-        # Generate 5-10 data points per company
-        for i in range(random.randint(5, 10)):
-            variation = random.uniform(-0.03, 0.03)  # ±3% variation
-            price = base_price * (1 + variation)
-            timestamp = datetime.now().isoformat()
-            data.append({
-                'name': company,
-                'price': round(price, 2),
-                'timestamp': timestamp,
-                'category': category
-            })
+    # Enhanced templates with comprehensive analysis
+    if 'gpu' in query_lower or 'graphic' in query_lower or 'processing' in query_lower:
+        return """The graphics processing unit market is experiencing transformational growth driven by AI workloads, with datacenter GPU revenue now exceeding gaming segments for major manufacturers. NVIDIA maintains dominant market position with approximately 88% share in AI training chips, though AMD's MI300 series and Intel's emerging Gaudi processors represent growing competitive pressure.
+
+Market Dynamics: The shift from gaming-centric to AI-optimized architectures has fundamentally altered GPU design priorities. Memory bandwidth, parallel processing efficiency, and power optimization now drive innovation cycles. Enterprise customers increasingly demand specialized AI accelerators rather than repurposed gaming hardware.
+
+Supply Chain Evolution: Geopolitical tensions have accelerated domestic chip manufacturing initiatives, with US CHIPS Act funding and European semiconductor sovereignty programs reshaping global production. Taiwan's TSMC remains critical for advanced node manufacturing, creating strategic vulnerabilities.
+
+Future Outlook: Edge AI deployment requirements are driving development of low-power, high-efficiency processing solutions. Neuromorphic chips and quantum processing represent emerging paradigms that could disrupt traditional GPU architectures within 5-7 years.
+
+Strategic Implications: Companies should diversify supplier relationships, invest in software optimization for multi-vendor hardware, and prepare for architectural transitions as Moore's Law scaling becomes economically challenging."""
+
+    elif 'ai' in query_lower and 'industry' in query_lower:
+        return """The artificial intelligence industry has reached an inflection point where enterprise adoption accelerates beyond experimental phases into production deployment at scale. Large language models, computer vision, and autonomous systems represent the three primary growth vectors, each with distinct market dynamics and competitive landscapes.
+
+Enterprise Transformation: AI implementation has moved from isolated use cases to comprehensive workflow integration. Companies report 15-30% productivity gains in knowledge work, with particular strength in content generation, code development, and customer service automation. However, integration complexity and skill gaps remain significant barriers.
+
+Infrastructure Evolution: The computational demands of modern AI models have created a new infrastructure category focused on training and inference optimization. Cloud providers are developing AI-specific hardware and services, while edge computing growth enables real-time AI applications in manufacturing, healthcare, and autonomous vehicles.
+
+Regulatory Landscape: Government initiatives worldwide are establishing AI governance frameworks, with EU AI Act leading comprehensive regulation. These frameworks will significantly impact development timelines, deployment strategies, and competitive positioning across different market segments.
+
+Investment Patterns: Venture capital flows increasingly favor AI applications with clear ROI metrics rather than purely technical innovations. Enterprise AI software represents the fastest-growing segment, while hardware infrastructure investments focus on specialized chips and edge computing solutions.
+
+Competitive Dynamics: Big Tech companies leverage platform advantages and compute resources, while specialized AI companies compete on domain expertise and customer intimacy. Open-source models are democratizing access but creating new challenges around model governance and intellectual property."""
+
+    # Industry-specific comprehensive analysis
+    templates = {
+        'technology': f"""The technology sector demonstrates unprecedented convergence across multiple innovation vectors, with artificial intelligence, quantum computing, and biotechnology creating synergistic opportunities. Cloud infrastructure has evolved beyond simple compute provisioning to comprehensive AI-as-a-Service platforms, fundamentally altering competitive dynamics.
+
+Digital Transformation Acceleration: Enterprise software adoption has permanently shifted toward cloud-native, API-first architectures. Companies investing in modern infrastructure report 25-40% faster time-to-market for new products. Legacy system migration represents a $500B+ opportunity through 2027.
+
+Emerging Technology Integration: The intersection of AI, 5G, and edge computing enables previously impossible applications in autonomous vehicles, smart manufacturing, and personalized healthcare. First-mover advantages in these convergence areas are creating substantial market valuations.
+
+Talent and Skills Evolution: The shift toward AI-augmented development is reshaping software engineering roles. Companies successfully adapting to AI-assisted workflows report 35% productivity improvements, while those lagging face increasing competitive disadvantage.
+
+Regulatory and Ethical Considerations: Technology companies face growing scrutiny around data privacy, algorithmic bias, and market concentration. Proactive compliance and ethical AI frameworks are becoming competitive differentiators rather than regulatory burdens.
+
+Investment Strategy: Focus on companies with strong data moats, AI-native architectures, and proven ability to monetize emerging technologies. Avoid legacy technology companies without clear transformation roadmaps.""",
+
+        'automotive': f"""The automotive industry is undergoing its most significant transformation since the invention of the automobile, with electrification, autonomous driving, and mobility services converging to reshape the entire value chain. Traditional automotive manufacturers face existential challenges as software capabilities become primary differentiators.
+
+Electrification Timeline: Battery cost reductions have reached tipping points where EVs achieve total cost of ownership parity with ICE vehicles in most markets. Range anxiety continues diminishing as charging infrastructure expands and battery energy density improves 8-12% annually.
+
+Autonomous Vehicle Progress: While full autonomy remains elusive, Level 3-4 systems in controlled environments are achieving commercial viability. Waymo's robotaxi service expansion and Tesla's FSD improvements demonstrate different approaches to autonomous capabilities, with distinct risk-reward profiles.
+
+Supply Chain Transformation: The shift from mechanical to electronic components is realigning supplier relationships. Semiconductor shortage experiences have accelerated vertical integration strategies and geographic diversification of critical component sourcing.
+
+Mobility as a Service: Urban transportation patterns favor access over ownership, particularly among younger demographics. Ride-sharing, car-sharing, and micromobility solutions are creating new business models and challenging traditional automotive revenue streams.
+
+Strategic Positioning: Success requires simultaneous execution across electrification, software development, and customer experience innovation. Companies unable to master all three dimensions face marginalization in the evolving mobility ecosystem.""",
+
+        'healthcare': f"""Healthcare innovation is accelerating through convergence of digital health, personalized medicine, and AI-driven diagnostics, fundamentally transforming patient care delivery and medical research methodologies. The COVID-19 pandemic permanently altered healthcare delivery models and accelerated technology adoption timelines.
+
+Digital Health Integration: Telemedicine adoption reached 85% of healthcare providers during the pandemic and has stabilized at 60%+ penetration. Remote patient monitoring and virtual care delivery models demonstrate superior outcomes for chronic disease management while reducing costs 20-35%.
+
+Personalized Medicine Advancement: Genomic sequencing costs have declined 99.9% since 2003, enabling routine integration into clinical workflows. Precision medicine approaches show particular promise in oncology, with targeted therapies achieving significantly better outcomes than traditional chemotherapy approaches.
+
+AI-Powered Diagnostics: Machine learning models now exceed human radiologist performance in specific imaging tasks. Early detection algorithms for diabetic retinopathy, skin cancer, and cardiac abnormalities are gaining FDA approval and clinical adoption.
+
+Regulatory Innovation: FDA breakthrough device pathways and software as medical device guidelines are accelerating approval timelines for digital health innovations. European MDR implementation creates additional compliance requirements but also establishes global quality standards.
+
+Market Opportunities: Focus on solutions addressing physician burnout, chronic disease management, and health equity challenges. Successful companies demonstrate clear clinical outcomes, regulatory compliance, and sustainable reimbursement models."""
+
+    }
     
-    return data
+    # Get industry-specific analysis or default
+    if industry in templates:
+        return templates[industry]
+    else:
+        # Generate contextual analysis for other industries
+        return f"""The {industry} sector is experiencing significant transformation driven by digital innovation, changing consumer expectations, and evolving regulatory landscapes. Companies that successfully navigate these transitions are positioning themselves for sustained competitive advantage.
 
-def process_with_pandas(data, query, industry):
-    """Real pandas data processing - showcases actual Python capabilities"""
-    try:
-        if not data:
-            return "No data available for processing."
-        
-        # Convert to pandas DataFrame - REAL pandas usage
-        df = pd.DataFrame(data)
-        
-        analysis = []
-        analysis.append("**Python pandas Data Processing:**")
-        analysis.append(f"• DataFrame shape: {df.shape}")
-        analysis.append(f"• Columns: {list(df.columns)}")
-        analysis.append(f"• Data types: {dict(df.dtypes)}")
-        analysis.append(f"• Memory usage: {df.memory_usage(deep=True).sum():,} bytes")
-        
-        # Real pandas operations
-        if 'price' in df.columns:
-            # Statistical summary
-            price_stats = df['price'].describe()
-            analysis.append(f"\n**Price Analysis (df.describe()):**")
-            analysis.append(f"• Count: {int(price_stats['count'])}")
-            analysis.append(f"• Mean: ${price_stats['mean']:.2f}")
-            analysis.append(f"• Std: ${price_stats['std']:.2f}")
-            analysis.append(f"• Min/Max: ${price_stats['min']:.2f} / ${price_stats['max']:.2f}")
-            
-            # Group by analysis
-            if 'name' in df.columns:
-                company_stats = df.groupby('name')['price'].agg(['mean', 'std', 'count']).round(2)
-                analysis.append(f"\n**Company Analysis (df.groupby()):**")
-                for idx, (company, stats) in enumerate(company_stats.iterrows()):
-                    if idx < 5:  # Limit to top 5 for readability
-                        analysis.append(f"• {company}: ${stats['mean']:.2f} avg (±${stats['std']:.2f}, n={int(stats['count'])})")
-                
-                if len(company_stats) > 5:
-                    analysis.append(f"• ... and {len(company_stats) - 5} more companies")
-            
-            # Category analysis if available
-            if 'category' in df.columns:
-                category_stats = df.groupby('category')['price'].agg(['mean', 'count']).round(2)
-                analysis.append(f"\n**Sector Analysis (df.groupby('category')):**")
-                for category, stats in category_stats.iterrows():
-                    analysis.append(f"• {category.title()}: ${stats['mean']:.2f} avg ({int(stats['count'])} records)")
-        
-        # Data quality analysis
-        analysis.append(f"\n**Data Quality Checks:**")
-        analysis.append(f"• Missing values: {df.isnull().sum().sum()}")
-        analysis.append(f"• Duplicate rows: {df.duplicated().sum()}")
-        analysis.append(f"• Unique companies: {df['name'].nunique() if 'name' in df.columns else 'N/A'}")
-        
-        return "\n".join(analysis)
-        
-    except Exception as e:
-        logger.error(f"Pandas processing error: {str(e)}")
-        return f"Pandas processing completed on {len(data)} records. Basic statistics calculated."
+Technology Integration: Digital transformation initiatives across {industry} organizations are showing measurable ROI, with leaders reporting 20-30% efficiency improvements through automation and data analytics implementation. Cloud adoption and AI integration are becoming strategic imperatives rather than optional upgrades.
 
-def generate_statistical_analysis(data, query, industry):
-    """Real statistical analysis using numpy - showcases numerical Python"""
-    try:
-        if not data:
-            return "No data available for statistical analysis."
-        
-        df = pd.DataFrame(data)
-        
-        if 'price' not in df.columns or df['price'].empty:
-            return "Statistical analysis requires numerical price data."
-        
-        prices = df['price'].values
-        insights = []
-        
-        # Real numpy statistical calculations
-        insights.append("**Statistical Analysis (numpy):**")
-        insights.append(f"• Mean: ${np.mean(prices):.2f}")
-        insights.append(f"• Median: ${np.median(prices):.2f}")
-        insights.append(f"• Standard Deviation: ${np.std(prices):.2f}")
-        insights.append(f"• Variance: ${np.var(prices):.2f}")
-        insights.append(f"• Coefficient of Variation: {(np.std(prices)/np.mean(prices)*100):.1f}%")
-        
-        # Percentile analysis
-        percentiles = np.percentile(prices, [10, 25, 50, 75, 90])
-        insights.append(f"\n**Percentile Analysis (np.percentile()):**")
-        insights.append(f"• 10th percentile: ${percentiles[0]:.2f}")
-        insights.append(f"• 25th percentile: ${percentiles[1]:.2f}")
-        insights.append(f"• 75th percentile: ${percentiles[3]:.2f}")
-        insights.append(f"• 90th percentile: ${percentiles[4]:.2f}")
-        insights.append(f"• Interquartile Range: ${percentiles[3] - percentiles[1]:.2f}")
-        
-        # Distribution analysis
-        insights.append(f"\n**Distribution Analysis:**")
-        insights.append(f"• Skewness: {calculate_skewness(prices):.3f}")
-        insights.append(f"• Price range: ${np.ptp(prices):.2f}")
-        insights.append(f"• Outliers (>2σ): {np.sum(np.abs(prices - np.mean(prices)) > 2 * np.std(prices))}")
-        
-        # Query-specific analysis
-        if 'trend' in query.lower() and len(prices) > 1:
-            price_change = ((prices[-1] - prices[0]) / prices[0]) * 100
-            insights.append(f"\n**Trend Analysis:**")
-            insights.append(f"• Latest vs First: {price_change:+.2f}%")
-            insights.append(f"• Volatility: {np.std(prices)/np.mean(prices)*100:.1f}%")
-        
-        return "\n".join(insights)
-        
-    except Exception as e:
-        logger.error(f"Statistical analysis error: {str(e)}")
-        return "Statistical analysis completed using numpy mathematical functions."
+Market Dynamics: Consumer behavior shifts and regulatory changes are reshaping traditional business models. Organizations with agile operating models and customer-centric approaches are capturing disproportionate market share while legacy players struggle to adapt.
 
-def calculate_skewness(data):
-    """Calculate skewness using numpy"""
-    mean = np.mean(data)
-    std = np.std(data)
-    return np.mean(((data - mean) / std) ** 3)
+Competitive Landscape: New entrants leveraging technology advantages are disrupting established market hierarchies. Successful companies are building platform-based business models that create network effects and sustainable competitive moats.
 
-def get_processing_stats(data):
-    """Get processing performance statistics"""
+Future Outlook: The next 3-5 years will determine market leadership positions as current transformation investments mature. Companies investing proactively in technology capabilities, talent development, and customer experience innovation are best positioned for long-term success.
+
+Strategic Recommendations: Prioritize data-driven decision making, invest in digital capabilities, and maintain customer-centric focus while building operational resilience for future market volatility."""
+
+def generate_enhanced_gemini_insights(query, industry):
+    """Generate Gemini-style data insights with enhanced metrics"""
+    # Generate realistic metrics based on industry and query
+    base_growth = {'technology': 35, 'automotive': 25, 'healthcare': 20, 'finance': 30, 'manufacturing': 18, 'retail': 15, 'energy': 28, 'aerospace': 22}
+    growth_rate = base_growth.get(industry, 25) + random.randint(-8, 12)
+    
+    market_size = random.randint(8, 85)
+    players = random.randint(3, 9)
+    market_share = random.randint(52, 78)
+    
+    # Add query-specific metrics
+    query_lower = query.lower()
+    if 'gpu' in query_lower or 'graphic' in query_lower:
+        market_size = random.randint(45, 120)
+        growth_rate = random.randint(28, 45)
+    elif 'ai' in query_lower:
+        growth_rate = random.randint(35, 55)
+        market_size = random.randint(25, 95)
+    elif 'electric' in query_lower or 'tesla' in query_lower:
+        growth_rate = random.randint(22, 38)
+        market_size = random.randint(15, 60)
+    
+    investment_change = growth_rate - random.randint(5, 12)
+    adoption_rate = growth_rate // 2 + random.randint(-3, 8)
+    cost_reduction = random.randint(8, 22)
+    efficiency_gain = random.randint(15, 35)
+    roi_improvement = random.randint(12, 28)
+    
+    templates = {
+        'technology': f"Technology sector analysis reveals {growth_rate}% YoY growth with sustained momentum. Key performance indicators show R&D investment increased {investment_change}%, enterprise adoption rates up {adoption_rate}%, implementation costs decreased {cost_reduction}%. Operational efficiency improved {efficiency_gain}% while ROI increased {roi_improvement}%. Market concentration shows {players} major platforms controlling {market_share}% of total addressable market valued at ${market_size}B. Cloud infrastructure spending represents largest growth segment with 40% of total enterprise IT budgets.",
+        
+        'automotive': f"Automotive industry data indicates {growth_rate}% expansion in electrification segment with accelerating transformation metrics. Production capacity utilization up {investment_change}%, battery costs down {cost_reduction}%, charging infrastructure deployment up {adoption_rate}%. Manufacturing efficiency gained {efficiency_gain}% through automation while supply chain optimization delivered {roi_improvement}% cost savings. Market leadership distributed among {players} major manufacturers holding {market_share}% combined market share. Global EV market size approaching ${market_size}B with projected compound annual growth rate of 28%.",
+        
+        'healthcare': f"Healthcare technology sector demonstrates {growth_rate}% annual growth driven by comprehensive digital transformation initiatives. Telehealth adoption increased {adoption_rate}%, regulatory approval timelines reduced {cost_reduction}%, clinical trial efficiency up {investment_change}%. Patient outcome improvements of {efficiency_gain}% while healthcare delivery costs decreased {roi_improvement}%. Market dynamics show {players} leading platforms capturing {market_share}% of digital health investments totaling ${market_size}B annually. Precision medicine segment represents fastest-growing subsector.",
+        
+        'finance': f"Financial technology sector exhibits {growth_rate}% growth with strong underlying fundamentals and regulatory support. Digital payment volumes increased {adoption_rate}%, customer acquisition costs reduced {cost_reduction}%, regulatory compliance efficiency up {investment_change}%. Transaction processing speed improved {efficiency_gain}% while operational costs decreased {roi_improvement}%. Competitive landscape features {players} dominant platforms controlling {market_share}% of fintech market valued at ${market_size}B. Open banking initiatives driving innovation acceleration.",
+        
+        'manufacturing': f"Manufacturing sector shows {growth_rate}% efficiency improvements through comprehensive automation adoption and Industry 4.0 implementation. Production optimization increased {investment_change}%, waste reduction achieved {cost_reduction}%, quality metrics improved {adoption_rate}%. Overall equipment effectiveness up {efficiency_gain}% while total cost of ownership reduced {roi_improvement}%. Industry consolidation features {players} major players representing {market_share}% of advanced manufacturing market worth ${market_size}B. Smart factory investments leading transformation.",
+        
+        'retail': f"Retail industry demonstrates {growth_rate}% omnichannel growth with seamless digital integration across customer touchpoints. E-commerce conversion rates up {adoption_rate}%, customer acquisition costs down {cost_reduction}%, inventory efficiency improved {investment_change}%. Customer satisfaction increased {efficiency_gain}% while operational costs optimized {roi_improvement}%. Market share concentration shows {players} leading retailers controlling {market_share}% of online retail valued at ${market_size}B. Personalization technology driving competitive advantage.",
+        
+        'energy': f"Energy sector indicates {growth_rate}% renewable capacity growth annually with accelerating clean energy transition. Grid efficiency improvements up {investment_change}%, energy storage costs reduced {cost_reduction}%, renewable penetration increased {adoption_rate}%. System reliability improved {efficiency_gain}% while operational expenses decreased {roi_improvement}%. Market structure includes {players} major utilities controlling {market_share}% of clean energy investments totaling ${market_size}B. Smart grid technologies enabling transformation.",
+        
+        'aerospace': f"Aerospace industry shows {growth_rate}% recovery with strong innovation focus and sustainable technology integration. Manufacturing efficiency up {investment_change}%, development costs optimized {cost_reduction}%, sustainable technology adoption increased {adoption_rate}%. Production throughput improved {efficiency_gain}% while time-to-market reduced {roi_improvement}%. Market concentration features {players} prime contractors holding {market_share}% of commercial aerospace market valued at ${market_size}B. Next-generation propulsion systems driving innovation."
+    }
+    
+    return templates.get(industry, f"Cross-industry analysis demonstrates {growth_rate}% growth potential with strong market fundamentals and technological innovation drivers. Performance metrics indicate {adoption_rate}% adoption acceleration, {cost_reduction}% cost optimization, and {investment_change}% investment increase. Operational efficiency improved {efficiency_gain}% while return on investment enhanced {roi_improvement}%. Competitive dynamics show {players} key market participants controlling {market_share}% of total addressable market valued at ${market_size}B. Digital transformation initiatives driving sustainable competitive advantages.")
+
+def simulate_data_sources(query, industry):
+    """Simulate data source collection for analysis"""
+    industry_sources = {
+        'technology': ['TechCrunch.com', 'VentureBeat.com', 'Ars Technica', 'The Verge', 'Wired.com', 'IEEE Spectrum', 'MIT Technology Review'],
+        'automotive': ['Automotive News', 'Motor Trend', 'Car and Driver', 'InsideEVs.com', 'Electrek.co', 'Reuters Autos', 'Automotive Dive'],
+        'healthcare': ['Modern Healthcare', 'Healthcare Dive', 'STAT News', 'MedTech Dive', 'BioPharma Dive', 'Health Affairs', 'NEJM.org'],
+        'finance': ['Financial Times', 'Bloomberg Markets', 'Reuters Finance', 'WSJ Markets', 'American Banker', 'Fintech News', 'CoinDesk.com'],
+        'manufacturing': ['Manufacturing.net', 'Industry Week', 'Plant Engineering', 'Automation World', 'Manufacturing Dive', 'Smart Industry', 'Assembly Magazine'],
+        'retail': ['Retail Dive', 'Chain Store Age', 'Progressive Grocer', 'Retail Leader', 'NRF.com', 'RetailWire.com', 'Modern Retail'],
+        'energy': ['Energy News', 'Renewable Energy World', 'Oil & Gas Journal', 'Utility Dive', 'Greentech Media', 'Energy Storage News', 'CleanTechnica'],
+        'aerospace': ['Aviation Week', 'FlightGlobal', 'Aerospace Daily', 'Space News', 'Defense News', 'Avionics International', 'Aerospace Testing']
+    }
+    
+    sources = industry_sources.get(industry, industry_sources['technology'])
+    count = random.randint(5, min(len(sources), 8))
+    selected_sources = random.sample(sources, count)
+    
     return {
-        'records_processed': len(data),
-        'processing_method': 'pandas + numpy',
-        'libraries_used': ['pandas', 'numpy', 'matplotlib'],
-        'data_source': 'SQLite database' if scraper else 'Generated sample data',
-        'memory_efficient': True,
-        'real_time_capable': True
+        'count': count,
+        'sources': selected_sources
     }
 
-# ===== CSV UPLOAD AND ANALYSIS =====
+# ===== ORIGINAL ENDPOINTS (UNCHANGED) =====
 
+# CSV Upload and Analysis API
 @app.route('/api/upload-csv', methods=['POST'])
 def upload_csv():
     try:
@@ -374,23 +362,18 @@ def upload_csv():
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
         
-        # Analyze CSV with pandas
+        # Analyze CSV
         df = pd.read_csv(filepath)
         
         analysis = {
             'filename': filename,
-            'shape': df.shape,
+            'total_rows': len(df),
             'columns': list(df.columns),
-            'dtypes': df.dtypes.astype(str).to_dict(),
+            'data_types': df.dtypes.astype(str).to_dict(),
             'missing_values': df.isnull().sum().to_dict(),
-            'memory_usage': f"{df.memory_usage(deep=True).sum():,} bytes",
+            'numeric_summary': df.describe().to_dict() if len(df.select_dtypes(include=['number']).columns) > 0 else {},
             'sample_data': df.head(5).to_dict('records')
         }
-        
-        # Add numerical summary if numeric columns exist
-        numeric_cols = df.select_dtypes(include=[np.number]).columns
-        if len(numeric_cols) > 0:
-            analysis['numeric_summary'] = df[numeric_cols].describe().to_dict()
         
         # Clean up file
         os.remove(filepath)
@@ -398,11 +381,6 @@ def upload_csv():
         return jsonify({
             'success': True,
             'analysis': analysis,
-            'processing_info': {
-                'method': 'pandas.read_csv()',
-                'libraries': ['pandas', 'numpy'],
-                'processing_time': 'Real-time'
-            },
             'timestamp': datetime.now().isoformat()
         })
         
@@ -410,68 +388,7 @@ def upload_csv():
         logger.error(f"CSV upload error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ===== CHART GENERATION =====
-
-@app.route('/api/generate-chart', methods=['POST'])
-def generate_chart():
-    try:
-        data = request.get_json()
-        chart_data = data.get('data', [])
-        chart_type = data.get('type', 'line')
-        title = data.get('title', 'Data Visualization')
-        
-        if not chart_data:
-            return jsonify({'success': False, 'error': 'No data provided'}), 400
-        
-        # Convert to pandas DataFrame
-        df = pd.DataFrame(chart_data)
-        
-        # Create chart with matplotlib
-        plt.figure(figsize=(10, 6))
-        plt.style.use('default')
-        
-        if chart_type == 'histogram' and len(df.columns) > 0:
-            numeric_cols = df.select_dtypes(include=[np.number]).columns
-            if len(numeric_cols) > 0:
-                plt.hist(df[numeric_cols[0]], bins=20, alpha=0.7, edgecolor='black')
-                plt.title(f'Distribution of {numeric_cols[0]}')
-                plt.xlabel(numeric_cols[0])
-                plt.ylabel('Frequency')
-        elif chart_type == 'line' and len(df.columns) >= 2:
-            plt.plot(df.iloc[:, 0], df.iloc[:, 1], marker='o', linewidth=2)
-            plt.title(title)
-            plt.xlabel(df.columns[0])
-            plt.ylabel(df.columns[1])
-            plt.grid(True, alpha=0.3)
-        else:
-            plt.text(0.5, 0.5, 'Chart generated with matplotlib\nData visualization ready', 
-                    ha='center', va='center', fontsize=14)
-            plt.title(title)
-        
-        plt.tight_layout()
-        
-        # Save to base64
-        img_buffer = io.BytesIO()
-        plt.savefig(img_buffer, format='png', bbox_inches='tight', dpi=150)
-        img_buffer.seek(0)
-        
-        img_base64 = base64.b64encode(img_buffer.read()).decode()
-        plt.close()
-        
-        return jsonify({
-            'success': True,
-            'chart': f'data:image/png;base64,{img_base64}',
-            'type': chart_type,
-            'method': 'matplotlib',
-            'timestamp': datetime.now().isoformat()
-        })
-        
-    except Exception as e:
-        logger.error(f"Chart generation error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-# ===== PDF REPORT GENERATION =====
-
+# Generate Report API
 @app.route('/api/generate-report', methods=['POST'])
 def generate_report_api():
     try:
@@ -487,7 +404,7 @@ def generate_report_api():
         file.save(filepath)
         
         # Generate report
-        report_path = generate_pdf_report(filepath)
+        report_path = generate_report(filepath)
         
         # Clean up CSV file
         os.remove(filepath)
@@ -495,7 +412,7 @@ def generate_report_api():
         return send_file(
             report_path,
             as_attachment=True,
-            download_name=f'python_data_report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf',
+            download_name=f'report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf',
             mimetype='application/pdf'
         )
         
@@ -503,81 +420,23 @@ def generate_report_api():
         logger.error(f"Report generation error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-def generate_pdf_report(csv_file):
-    """Generate PDF report using pandas analysis and matplotlib"""
-    try:
-        # Read and analyze CSV with pandas
-        df = pd.read_csv(csv_file)
-        
-        # Create matplotlib visualization
-        plt.figure(figsize=(10, 6))
-        numeric_cols = df.select_dtypes(include=[np.number]).columns
-        if len(numeric_cols) > 0:
-            df[numeric_cols[0]].hist(bins=20, alpha=0.7, edgecolor='black')
-            plt.title(f'Distribution of {numeric_cols[0]}')
-            plt.xlabel(numeric_cols[0])
-            plt.ylabel('Frequency')
-            plt.grid(True, alpha=0.3)
-        
-        # Save chart
-        img_buffer = io.BytesIO()
-        plt.savefig(img_buffer, format='png', bbox_inches='tight')
-        img_buffer.seek(0)
-        plt.close()
-        
-        # Create PDF report
-        report_filename = f'python_report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'
-        doc = SimpleDocTemplate(report_filename, pagesize=letter)
-        styles = getSampleStyleSheet()
-        story = []
-        
-        # Title
-        title = Paragraph("Python Data Processing Report", styles['Title'])
-        story.append(title)
-        story.append(Spacer(1, 12))
-        
-        # Summary
-        summary = Paragraph(f"""
-        <b>Data Analysis Summary:</b><br/>
-        • Total Rows: {len(df)}<br/>
-        • Columns: {', '.join(df.columns)}<br/>
-        • Processing Method: pandas DataFrame operations<br/>
-        • Analysis Libraries: pandas, numpy, matplotlib<br/>
-        • Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-        """, styles['Normal'])
-        story.append(summary)
-        story.append(Spacer(1, 12))
-        
-        # Add chart if numeric data exists
-        if len(numeric_cols) > 0:
-            img = Image(img_buffer, width=400, height=240)
-            story.append(img)
-        
-        doc.build(story)
-        return report_filename
-        
-    except Exception as e:
-        logger.error(f"PDF generation error: {str(e)}")
-        raise e
-
-# ===== SCRAPER ENDPOINTS (KEEP EXISTING) =====
-
+# Scraper APIs - Only available if scraper is working
 @app.route('/api/scraper/sites', methods=['GET'])
 def get_monitored_sites():
     try:
         if not scraper:
             return jsonify({'success': False, 'error': 'Scraper not available'}), 500
         
+        # Get sites directly from database
         conn = sqlite3.connect('scraper.db')
         cursor = conn.cursor()
-        cursor.execute('SELECT id, name, url, price_selector, category FROM monitored_sites')
-        sites = [{'id': row[0], 'name': row[1], 'url': row[2], 'price_selector': row[3], 'category': row[4]} for row in cursor.fetchall()]
+        cursor.execute('SELECT id, name, url, price_selector FROM monitored_sites')
+        sites = [{'id': row[0], 'name': row[1], 'url': row[2], 'price_selector': row[3]} for row in cursor.fetchall()]
         conn.close()
         
         return jsonify({
             'success': True,
-            'sites': sites,
-            'method': 'SQLite database query'
+            'sites': sites
         })
     except Exception as e:
         logger.error(f"Get sites error: {str(e)}")
@@ -593,18 +452,16 @@ def add_site_api():
         name = data.get('name')
         url = data.get('url')
         price_selector = data.get('price_selector')
-        category = data.get('category', 'general')
         
         if not all([name, url, price_selector]):
             return jsonify({'success': False, 'error': 'Missing required fields'}), 400
         
-        site_id = scraper.add_site(name, url, price_selector, category)
+        site_id = scraper.add_site(name, url, price_selector)
         
         return jsonify({
             'success': True,
             'message': f'Added {name} to monitoring list',
-            'site_id': site_id,
-            'method': 'BeautifulSoup web scraping'
+            'site_id': site_id
         })
     except Exception as e:
         logger.error(f"Add site error: {str(e)}")
@@ -620,7 +477,6 @@ def scrape_now_api():
         return jsonify({
             'success': True,
             'results': results,
-            'method': 'BeautifulSoup + requests',
             'timestamp': datetime.now().isoformat()
         })
     except Exception as e:
@@ -637,100 +493,249 @@ def price_history_api(site_id):
         return jsonify({
             'success': True,
             'site_id': site_id,
-            'history': history,
-            'analysis_ready': True
+            'history': history
         })
     except Exception as e:
         logger.error(f"Price history error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ===== ANALYTICS ENDPOINTS =====
+# ANALYTICS ENDPOINTS
 
 @app.route('/api/analytics/summary', methods=['GET'])
 def analytics_summary():
-    """Get summary statistics with pandas analysis"""
+    """Get summary statistics"""
     try:
         if not scraper:
             return jsonify({'success': False, 'error': 'Scraper not available'}), 500
         
         conn = sqlite3.connect('scraper.db')
+        cursor = conn.cursor()
         
-        # Use pandas to read and analyze data
-        sites_df = pd.read_sql_query('SELECT * FROM monitored_sites', conn)
-        history_df = pd.read_sql_query('SELECT * FROM price_history WHERE price > 0', conn)
+        # Summary stats
+        cursor.execute('SELECT COUNT(*) FROM monitored_sites')
+        total_sites = cursor.fetchone()[0]
+        
+        cursor.execute('SELECT COUNT(*) FROM price_history')
+        total_data_points = cursor.fetchone()[0]
+        
+        cursor.execute('SELECT AVG(price) FROM price_history WHERE price > 0')
+        avg_price = cursor.fetchone()[0] or 0
+        
+        cursor.execute('SELECT MIN(price), MAX(price) FROM price_history WHERE price > 0')
+        price_range = cursor.fetchone()
+        min_price, max_price = price_range if price_range[0] else (0, 0)
         
         conn.close()
         
-        # Real pandas analysis
-        summary = {
-            'total_sites': len(sites_df),
-            'total_data_points': len(history_df),
-            'average_price': float(history_df['price'].mean()) if not history_df.empty else 0,
-            'price_std': float(history_df['price'].std()) if not history_df.empty else 0,
-            'price_range': {
-                'min': float(history_df['price'].min()) if not history_df.empty else 0,
-                'max': float(history_df['price'].max()) if not history_df.empty else 0
-            },
-            'analysis_method': 'pandas.read_sql_query() + DataFrame.describe()'
-        }
-        
         return jsonify({
             'success': True,
-            'summary': summary,
-            'processing': 'Real-time pandas analysis'
+            'summary': {
+                'total_sites': total_sites,
+                'total_data_points': total_data_points,
+                'average_price': round(avg_price, 2),
+                'price_range': {
+                    'min': min_price,
+                    'max': max_price
+                }
+            }
         })
         
     except Exception as e:
         logger.error(f"Analytics summary error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/analytics/correlations', methods=['GET'])
-def price_correlations():
-    """Calculate price correlations using pandas"""
+@app.route('/api/analytics/price-comparison', methods=['GET'])
+def price_comparison():
+    """Get price comparison data for bar charts"""
     try:
         if not scraper:
             return jsonify({'success': False, 'error': 'Scraper not available'}), 500
         
         conn = sqlite3.connect('scraper.db')
+        cursor = conn.cursor()
         
-        # Get price data with pandas
-        query = '''
-            SELECT ms.name, ph.price, ph.scraped_at
+        # Average prices by site
+        cursor.execute('''
+            SELECT ms.name, AVG(ph.price) as avg_price, COUNT(ph.price) as data_points
             FROM monitored_sites ms
-            JOIN price_history ph ON ms.id = ph.site_id
-            WHERE ph.price > 0
-            ORDER BY ph.scraped_at DESC
-            LIMIT 1000
-        '''
-        df = pd.read_sql_query(query, conn)
+            LEFT JOIN price_history ph ON ms.id = ph.site_id
+            GROUP BY ms.id, ms.name
+            HAVING COUNT(ph.price) > 0
+            ORDER BY avg_price DESC
+        ''')
+        avg_prices = cursor.fetchall()
         conn.close()
         
-        if df.empty:
-            return jsonify({'success': False, 'error': 'No price data available'})
-        
-        # Create correlation matrix with pandas
-        pivot_df = df.pivot_table(values='price', index='scraped_at', columns='name', aggfunc='mean')
-        correlation_matrix = pivot_df.corr()
-        
-        # Convert to JSON-serializable format
-        correlations = {}
-        for col in correlation_matrix.columns:
-            correlations[col] = correlation_matrix[col].to_dict()
+        raw_data = [{'name': row[0], 'avg_price': row[1], 'data_points': row[2]} for row in avg_prices]
         
         return jsonify({
             'success': True,
-            'correlations': correlations,
-            'method': 'pandas.pivot_table() + DataFrame.corr()',
-            'companies_analyzed': list(correlation_matrix.columns),
+            'raw_data': raw_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Price comparison error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/analytics/price-trends', methods=['GET'])
+def price_trends():
+    """Get price trends over time"""
+    try:
+        if not scraper:
+            return jsonify({'success': False, 'error': 'Scraper not available'}), 500
+        
+        conn = sqlite3.connect('scraper.db')
+        cursor = conn.cursor()
+        
+        # Price trends over time
+        cursor.execute('''
+            SELECT ms.name, ph.price, ph.scraped_at
+            FROM monitored_sites ms
+            JOIN price_history ph ON ms.id = ph.site_id
+            ORDER BY ph.scraped_at DESC
+            LIMIT 50
+        ''')
+        price_trends = cursor.fetchall()
+        conn.close()
+        
+        raw_data = [{'name': row[0], 'price': row[1], 'date': row[2]} for row in price_trends]
+        
+        return jsonify({
+            'success': True,
+            'raw_data': raw_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Price trends error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/simulate-data', methods=['POST'])
+def simulate_data():
+    """Generate demo data for testing"""
+    try:
+        if not scraper:
+            return jsonify({'success': False, 'error': 'Scraper not available'}), 500
+        
+        data = request.get_json() or {}
+        days = data.get('days', 7)
+        
+        scraper.simulate_historical_data(days)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Generated {days} days of demo data',
             'timestamp': datetime.now().isoformat()
         })
         
     except Exception as e:
-        logger.error(f"Correlation analysis error: {str(e)}")
+        logger.error(f"Simulate data error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+# Chart Generation API
+@app.route('/api/generate-chart', methods=['POST'])
+def generate_chart():
+    try:
+        data = request.get_json()
+        chart_data = data.get('data', [])
+        chart_type = data.get('type', 'line')
+        title = data.get('title', 'Chart')
+        
+        if not chart_data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+        
+        # Convert to DataFrame
+        df = pd.DataFrame(chart_data)
+        
+        # Create chart
+        plt.figure(figsize=(10, 6))
+        
+        if chart_type == 'histogram' and len(df.columns) > 0:
+            numeric_cols = df.select_dtypes(include=['number']).columns
+            if len(numeric_cols) > 0:
+                df[numeric_cols[0]].hist()
+                plt.title(f'Distribution of {numeric_cols[0]}')
+        elif chart_type == 'line' and len(df.columns) >= 2:
+            plt.plot(df.iloc[:, 0], df.iloc[:, 1])
+            plt.title(title)
+        else:
+            plt.text(0.5, 0.5, 'No suitable data for chart', ha='center', va='center')
+            plt.title('No Data')
+        
+        # Save to base64
+        img_buffer = io.BytesIO()
+        plt.savefig(img_buffer, format='png', bbox_inches='tight', dpi=150)
+        img_buffer.seek(0)
+        
+        img_base64 = base64.b64encode(img_buffer.read()).decode()
+        plt.close()
+        
+        return jsonify({
+            'success': True,
+            'chart': f'data:image/png;base64,{img_base64}',
+            'type': chart_type,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Chart generation error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+def generate_report(csv_file):
+    """Generate PDF report from CSV file"""
+    try:
+        # Read CSV
+        df = pd.read_csv(csv_file)
+        
+        # Basic analysis
+        total_rows = len(df)
+        columns = list(df.columns)
+        
+        # Create a simple chart
+        plt.figure(figsize=(10, 6))
+        if len(df.columns) > 1:
+            numeric_cols = df.select_dtypes(include=['number']).columns
+            if len(numeric_cols) > 0:
+                df[numeric_cols[0]].hist()
+                plt.title(f'Distribution of {numeric_cols[0]}')
+                plt.xlabel(numeric_cols[0])
+                plt.ylabel('Frequency')
+        
+        # Save chart to bytes
+        img_buffer = io.BytesIO()
+        plt.savefig(img_buffer, format='png', bbox_inches='tight')
+        img_buffer.seek(0)
+        plt.close()
+        
+        # Create PDF report
+        report_filename = f'report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'
+        doc = SimpleDocTemplate(report_filename, pagesize=letter)
+        styles = getSampleStyleSheet()
+        story = []
+        
+        # Title
+        title = Paragraph("Data Analysis Report", styles['Title'])
+        story.append(title)
+        story.append(Spacer(1, 12))
+        
+        # Summary
+        summary = Paragraph(f"<b>Data Summary:</b><br/>Total Rows: {total_rows}<br/>Columns: {', '.join(columns)}", styles['Normal'])
+        story.append(summary)
+        story.append(Spacer(1, 12))
+        
+        # Add chart
+        if len(df.select_dtypes(include=['number']).columns) > 0:
+            img = Image(img_buffer, width=400, height=240)
+            story.append(img)
+        
+        doc.build(story)
+        return report_filename
+        
+    except Exception as e:
+        logger.error(f"PDF generation error: {str(e)}")
+        raise e
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('FLASK_ENV', 'production') == 'development'
-    logger.info(f"Starting Python Data Processing Platform on port {port}")
+    logger.info(f"Starting Flask app on port {port}")
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
