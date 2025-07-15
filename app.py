@@ -32,6 +32,16 @@ except Exception as e:
     logger.error(f"Database initialization failed: {str(e)}")
     db = None
 
+# Initialize LLM processor (with error handling)
+llm_processor = None
+try:
+    from simple_llm import SimpleLLMProcessor
+    llm_processor = SimpleLLMProcessor()
+    logger.info("LLM processor initialized successfully")
+except Exception as e:
+    logger.error(f"LLM processor initialization failed: {str(e)}")
+    llm_processor = None
+
 # Preset Brisbane property questions
 PRESET_QUESTIONS = [
     "What new development applications were submitted in Brisbane this month?",
@@ -50,18 +60,25 @@ def index():
         'status': 'running',
         'timestamp': datetime.now().isoformat(),
         'features': [
+            'Real Claude Analysis',
+            'Real Gemini Processing',
             'Database Storage',
             'Query History',
-            'Brisbane Property Questions',
-            'Ready for LLM Integration'
+            'Brisbane Property Focus',
+            'Multi-LLM Pipeline'
         ],
-        'database_status': 'connected' if db else 'disconnected',
+        'services': {
+            'database': 'connected' if db else 'disconnected',
+            'llm_processor': 'connected' if llm_processor else 'disconnected',
+            'claude': 'connected' if llm_processor and llm_processor.claude_client else 'disconnected',
+            'gemini': 'connected' if llm_processor and llm_processor.gemini_model else 'disconnected'
+        },
         'preset_questions': PRESET_QUESTIONS
     })
 
 @app.route('/health')
 def health():
-    """Enhanced health check with database status"""
+    """Enhanced health check with all services"""
     try:
         # Test database connection
         database_stats = {}
@@ -74,16 +91,25 @@ def health():
             except Exception as e:
                 logger.error(f"Database health check failed: {str(e)}")
         
+        # Check LLM services
+        claude_status = llm_processor and llm_processor.claude_client is not None
+        gemini_status = llm_processor and llm_processor.gemini_model is not None
+        
         return jsonify({
             'status': 'healthy',
             'timestamp': datetime.now().isoformat(),
             'python_version': sys.version.split()[0],
             'services': {
                 'database': database_status,
-                'claude_api': bool(os.getenv('CLAUDE_API_KEY')),
-                'gemini_api': bool(os.getenv('GEMINI_API_KEY'))
+                'claude': claude_status,
+                'gemini': gemini_status,
+                'llm_processor': llm_processor is not None
             },
-            'database_stats': database_stats
+            'database_stats': database_stats,
+            'api_keys': {
+                'claude_configured': bool(os.getenv('CLAUDE_API_KEY')),
+                'gemini_configured': bool(os.getenv('GEMINI_API_KEY'))
+            }
         })
     except Exception as e:
         return jsonify({
@@ -136,7 +162,7 @@ def get_property_questions():
 
 @app.route('/api/property/analyze', methods=['POST'])
 def analyze_property_question():
-    """Analyze Brisbane property question (enhanced mock for now)"""
+    """Enhanced Brisbane property question analysis with LLM integration"""
     try:
         data = request.get_json()
         question = data.get('question', '').strip()
@@ -152,12 +178,26 @@ def analyze_property_question():
         
         logger.info(f"Processing property question: {question} (type: {question_type})")
         
-        # Simulate processing time
         start_time = time.time()
-        time.sleep(1)  # Simulate processing
         
-        # Generate enhanced mock answer based on question
-        answer = generate_mock_answer(question)
+        # Use LLM processor if available
+        if llm_processor:
+            try:
+                # Use real LLM processing
+                result = llm_processor.process_question(question)
+                answer = result['final_answer']
+                llm_status = result.get('processing_stages', {})
+                llm_status['llm_available'] = True
+                llm_status['claude_success'] = result.get('claude_result', {}).get('success', False)
+                llm_status['gemini_success'] = result.get('gemini_result', {}).get('success', False)
+            except Exception as e:
+                logger.error(f"LLM processing failed: {str(e)}")
+                answer = generate_mock_answer(question)
+                llm_status = {'error': str(e), 'llm_available': False}
+        else:
+            # Use mock answer
+            answer = generate_mock_answer(question)
+            llm_status = {'note': 'LLM processor not available', 'llm_available': False}
         
         processing_time = time.time() - start_time
         
@@ -182,8 +222,8 @@ def analyze_property_question():
             'answer': answer,
             'processing_time': round(processing_time, 2),
             'query_id': query_id,
-            'timestamp': datetime.now().isoformat(),
-            'next_step': 'LLM integration (Claude + Gemini) coming next'
+            'llm_status': llm_status,
+            'timestamp': datetime.now().isoformat()
         })
         
     except Exception as e:
@@ -270,8 +310,50 @@ def reset_property_database():
             'error': str(e)
         }), 500
 
+@app.route('/api/property/test-llm', methods=['POST'])
+def test_llm_integration():
+    """Test LLM integration specifically"""
+    try:
+        data = request.get_json()
+        question = data.get('question', 'What is the Brisbane property market like?')
+        
+        if not llm_processor:
+            return jsonify({
+                'success': False,
+                'error': 'LLM processor not available'
+            }), 500
+        
+        # Test Claude
+        claude_result = llm_processor.analyze_with_claude(question)
+        
+        # Test Gemini
+        gemini_result = llm_processor.process_with_gemini(question, claude_result['analysis'])
+        
+        return jsonify({
+            'success': True,
+            'question': question,
+            'claude_test': {
+                'success': claude_result['success'],
+                'response': claude_result['analysis'][:200] + '...' if len(claude_result['analysis']) > 200 else claude_result['analysis'],
+                'error': claude_result.get('error')
+            },
+            'gemini_test': {
+                'success': gemini_result['success'],
+                'response': gemini_result['analysis'][:200] + '...' if len(gemini_result['analysis']) > 200 else gemini_result['analysis'],
+                'error': gemini_result.get('error')
+            },
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"LLM test error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 def generate_mock_answer(question: str) -> str:
-    """Generate contextual mock answers for Brisbane property questions"""
+    """Generate enhanced mock answers when LLM is not available"""
     question_lower = question.lower()
     
     if 'development' in question_lower and 'application' in question_lower:
@@ -280,22 +362,26 @@ def generate_mock_answer(question: str) -> str:
 ## Recent Applications Submitted
 
 **Major Projects:**
-- **South Brisbane Mixed-Use Tower** - 45-story development at 123 Main Street, South Brisbane
+- **South Brisbane Mixed-Use Tower** - 45-story development at 123 Main Street
   - 400 residential units + commercial space
-  - Application A/24/001234 submitted January 10, 2025
-  - Currently under council review
+  - Application A/24/001234 - Currently under council review
+  - Estimated completion: 2026
 
-- **Fortitude Valley Residential** - 28-story tower at James Street, Fortitude Valley  
+- **Fortitude Valley Residential** - 28-story tower at James Street
   - 220 apartments with ground floor retail
-  - Application A/24/001235 submitted January 8, 2025
-  - Public consultation period open
+  - Application A/24/001235 - Public consultation period open
+  - Focus on young professional market
 
 ## Development Activity Summary
 - **This month:** 12 new applications submitted
 - **Total value:** $240M in proposed developments
 - **Focus areas:** South Brisbane, Fortitude Valley, New Farm
 
-*Analysis complete - Next: Add real Brisbane City Council RSS feed integration*"""
+## Market Implications
+Strong development pipeline indicates continued confidence in Brisbane's inner-city residential market.
+
+---
+*Enhanced mock analysis - Full LLM integration will provide real-time Brisbane City Council data*"""
     
     elif 'suburb' in question_lower and 'trending' in question_lower:
         return """# Trending Brisbane Suburbs - January 2025
@@ -303,26 +389,30 @@ def generate_mock_answer(question: str) -> str:
 ## Current Market Leaders
 
 **🔥 Paddington** - 15% quarterly growth
-- Character housing driving demand
-- Average price: $1.2M
+- Character housing driving premium demand
+- Average price: $1.2M (houses), $650K (units)
 - Days on market: 18 days
 
-**📈 New Farm** - 12% quarterly growth  
+**📈 New Farm** - 12% quarterly growth
 - Riverfront premium locations
-- Strong apartment market
-- Infrastructure benefits from CRR
+- Strong apartment market performance
+- Cross River Rail proximity benefits
 
 **⚡ Teneriffe** - 11% quarterly growth
-- Industrial heritage conversions
+- Industrial heritage conversions popular
 - Young professional demographic
-- Excellent connectivity
+- Excellent connectivity to CBD
 
 ## Market Drivers
-- Cross River Rail proximity
+- Cross River Rail infrastructure investment
 - Character housing scarcity
-- Infrastructure investment
+- CBD accessibility premium
 
-*Analysis complete - Next: Add real property news RSS integration*"""
+## Investment Outlook
+Inner-city Brisbane suburbs with character housing and infrastructure connectivity showing strongest growth momentum.
+
+---
+*Enhanced mock analysis - Full LLM integration will provide real-time property market data*"""
     
     elif 'infrastructure' in question_lower:
         return """# Brisbane Infrastructure Projects - Property Impact Analysis
@@ -330,24 +420,25 @@ def generate_mock_answer(question: str) -> str:
 ## Major Active Projects
 
 **🚆 Cross River Rail** - $5.4B investment
-- **Stations:** Woolloongabba, Boggo Road, Exhibition
-- **Property impact:** 20-30% value uplift within 800m of stations
-- **Timeline:** 2025 completion
+- **New Stations:** Woolloongabba, Boggo Road, Exhibition, Roma Street
+- **Property impact:** 20-30% value uplift within 800m radius
+- **Completion:** 2025
 
 **🌉 Brisbane Metro** - $1.2B investment
-- **Route:** Eight Mile Plains to Roma Street
+- **Route:** Eight Mile Plains to Roma Street via Cultural Centre
 - **Property impact:** Improved connectivity boosting apartment demand
-- **Timeline:** 2024 operational
+- **Status:** Operational 2024
 
 **🏗️ Queen's Wharf** - $3.6B development
 - **Impact:** South Brisbane gentrification accelerating
-- **Property flow-on:** Residential demand in surrounding areas
-- **Timeline:** 2025 full completion
+- **Property flow-on:** Premium residential demand in surrounding areas
+- **Timeline:** Full completion 2025
 
 ## Investment Implications
-Properties within 1km of major infrastructure seeing 15-25% premium over market average.
+Properties within 1km of major infrastructure projects showing 15-25% premium over Brisbane market average.
 
-*Analysis complete - Next: Add real Queensland Government data integration*"""
+---
+*Enhanced mock analysis - Full LLM integration will provide real Queensland Government project data*"""
     
     elif 'zoning' in question_lower:
         return """# Brisbane Zoning Changes - January 2025
@@ -371,29 +462,31 @@ Properties within 1km of major infrastructure seeing 15-25% premium over market 
 - **Investors:** Character areas maintain value stability
 - **Residents:** Managed growth with heritage protection
 
-*Analysis complete - Next: Add real Brisbane City Council planning data*"""
+---
+*Enhanced mock analysis - Full LLM integration will provide real Brisbane City Council planning data*"""
     
     else:
         return f"""# Brisbane Property Analysis: {question}
 
-## Current Market Overview
-Brisbane's property market continues showing strong fundamentals with sustained growth across multiple sectors.
+## Market Overview
+Brisbane's property market demonstrates strong fundamentals with selective growth across key precincts.
 
-## Key Trends
-- **Development Activity:** Strong pipeline of residential and mixed-use projects
-- **Infrastructure Impact:** Cross River Rail and Brisbane Metro driving growth
-- **Market Dynamics:** Balanced supply/demand with selective growth areas
+## Key Insights
+- **Development Pipeline:** Robust activity in inner-city areas
+- **Infrastructure Impact:** Cross River Rail and Metro driving value growth
+- **Market Dynamics:** Balanced supply/demand with infrastructure-led growth
 
-## Areas of Interest
-- **South Brisbane:** Major development hub
-- **Fortitude Valley:** High-density residential focus  
+## Strategic Areas
+- **South Brisbane:** Major mixed-use development hub
+- **Fortitude Valley:** High-density residential focus
 - **New Farm/Teneriffe:** Premium riverfront market
-- **Paddington:** Character housing premium
+- **Paddington:** Character housing premium market
 
-## Investment Implications
-Strategic opportunities exist in infrastructure-adjacent areas with strong development pipelines.
+## Professional Outlook
+Brisbane property market positioned for continued growth driven by infrastructure investment and strategic urban development.
 
-*This is an enhanced mock response. Next step: Real LLM integration with Claude and Gemini for deeper analysis.*"""
+---
+*Enhanced mock analysis - Full LLM integration will provide real-time multi-source data analysis*"""
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
