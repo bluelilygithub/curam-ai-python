@@ -25,12 +25,35 @@ class SimpleLLMProcessor:
             if claude_key:
                 self.claude_client = anthropic.Anthropic(api_key=claude_key)
                 logger.info("Claude client initialized successfully")
+                
+                # Test the connection with a simple call
+                try:
+                    test_response = self.claude_client.messages.create(
+                        model="claude-3-sonnet-20240229",
+                        max_tokens=10,
+                        messages=[{"role": "user", "content": "Hello"}]
+                    )
+                    logger.info("Claude connection test successful")
+                except Exception as test_error:
+                    logger.error(f"Claude connection test failed: {str(test_error)}")
+                    # Try with different model name
+                    try:
+                        test_response = self.claude_client.messages.create(
+                            model="claude-3-sonnet-20241022",
+                            max_tokens=10,
+                            messages=[{"role": "user", "content": "Hello"}]
+                        )
+                        logger.info("Claude connection successful with updated model")
+                    except Exception as test_error2:
+                        logger.error(f"Claude connection failed with both models: {str(test_error2)}")
+                        self.claude_client = None
             else:
                 logger.warning("CLAUDE_API_KEY not found")
         except ImportError:
             logger.error("anthropic library not installed")
         except Exception as e:
             logger.error(f"Claude initialization failed: {str(e)}")
+            self.claude_client = None
     
     def _init_gemini(self):
         """Initialize Gemini with error handling"""
@@ -41,12 +64,21 @@ class SimpleLLMProcessor:
                 genai.configure(api_key=gemini_key)
                 self.gemini_model = genai.GenerativeModel('gemini-pro')
                 logger.info("Gemini client initialized successfully")
+                
+                # Test the connection
+                try:
+                    test_response = self.gemini_model.generate_content("Hello")
+                    logger.info("Gemini connection test successful")
+                except Exception as test_error:
+                    logger.error(f"Gemini connection test failed: {str(test_error)}")
+                    self.gemini_model = None
             else:
                 logger.warning("GEMINI_API_KEY not found")
         except ImportError:
             logger.error("google-generativeai library not installed")
         except Exception as e:
             logger.error(f"Gemini initialization failed: {str(e)}")
+            self.gemini_model = None
     
     def analyze_with_claude(self, question: str) -> Dict:
         """Analyze question with Claude (safe)"""
@@ -70,11 +102,21 @@ Please provide:
 
 Keep your response concise and focused specifically on Brisbane, Queensland, Australia."""
 
-            response = self.claude_client.messages.create(
-                model="claude-3-sonnet-20240229",
-                max_tokens=1000,
-                messages=[{"role": "user", "content": prompt}]
-            )
+            # Try the primary model first
+            try:
+                response = self.claude_client.messages.create(
+                    model="claude-3-sonnet-20240229",
+                    max_tokens=1000,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+            except Exception as model_error:
+                logger.warning(f"Primary Claude model failed: {str(model_error)}")
+                # Try alternative model
+                response = self.claude_client.messages.create(
+                    model="claude-3-sonnet-20241022",
+                    max_tokens=1000,
+                    messages=[{"role": "user", "content": prompt}]
+                )
             
             return {
                 'success': True,
@@ -224,6 +266,14 @@ Focus on actionable information for Brisbane property professionals."""
             answer += f"""## Strategic Research Insights
 
 {claude_result['analysis']}
+
+"""
+        else:
+            answer += f"""## Strategic Research Insights
+
+Claude analysis currently unavailable. Using enhanced Brisbane property insights:
+
+This question relates to Brisbane's dynamic property market. Key areas to focus on include South Brisbane, Fortitude Valley, New Farm, and Paddington. Data sources should include Brisbane City Council development applications, property market reports, and infrastructure project updates.
 
 """
         
