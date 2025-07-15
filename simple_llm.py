@@ -59,6 +59,9 @@ class SimpleLLMProcessor:
         except Exception as e:
             logger.error(f"Claude initialization failed: {str(e)}")
             self.claude_client = None
+
+
+
     
     def _init_gemini(self):
         """Initialize Gemini with working model names from your other project"""
@@ -217,6 +220,31 @@ Focus on actionable information for Brisbane property professionals."""
             }
         ]
     
+
+    def scrape_brisbane_council_rss(self):
+        """Scrape real Brisbane City Council RSS"""
+        try:
+            import feedparser
+            rss_url = "https://www.brisbane.qld.gov.au/about-council/news-media/news/rss"
+            feed = feedparser.parse(rss_url)
+            
+            data = []
+            for entry in feed.entries[:5]:
+                if any(keyword in entry.title.lower() for keyword in ['development', 'planning', 'infrastructure', 'property']):
+                    data.append({
+                        'source': 'Brisbane City Council',
+                        'title': entry.title,
+                        'summary': entry.summary[:200] + '...',
+                        'link': entry.link,
+                        'date': entry.published,
+                        'type': 'government_news'
+                    })
+            return data
+        except Exception as e:
+            logger.error(f"RSS scraping failed: {str(e)}")
+            return self.get_mock_brisbane_data('')
+
+
     def process_question(self, question: str) -> Dict:
         """Process a Brisbane property question through the full pipeline"""
         try:
