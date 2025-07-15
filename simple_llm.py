@@ -17,49 +17,103 @@ class SimpleLLMProcessor:
         # Initialize Gemini safely
         self._init_gemini()
     
-    def _init_claude(self):
-        """Initialize Claude with working model names"""
-        try:
-            import anthropic
-            claude_key = os.getenv('CLAUDE_API_KEY')
-            if claude_key:
-                self.claude_client = anthropic.Anthropic(api_key=claude_key.strip())
-                logger.info("Claude client initialized successfully")
+def _init_claude(self):
+    """Initialize Claude with fixed initialization pattern"""
+    try:
+        import anthropic
+        claude_key = os.getenv('CLAUDE_API_KEY')
+        if claude_key:
+            # Use explicit, minimal initialization - no extra parameters
+            self.claude_client = anthropic.Anthropic(
+                api_key=claude_key.strip()
+                # Remove any other parameters that might cause conflicts
+            )
+            logger.info("Claude client initialized successfully")
+            
+            # Test with models that work in your other project
+            working_models = [
+                "claude-3-5-sonnet-20241022",  # Latest Sonnet - your JS app uses this
+                "claude-3-haiku-20240307",     # Haiku fallback - your JS app uses this
+                "claude-3-sonnet-20240229"     # Original Sonnet
+            ]
+            
+            test_successful = False
+            for model_name in working_models:
+                try:
+                    # Minimal test call - exactly like your working JS app
+                    test_response = self.claude_client.messages.create(
+                        model=model_name,
+                        max_tokens=10,
+                        messages=[{"role": "user", "content": "Hello"}]
+                    )
+                    logger.info(f"Claude connection successful with model: {model_name}")
+                    self.working_claude_model = model_name
+                    test_successful = True
+                    break
+                except Exception as model_error:
+                    logger.warning(f"Claude model {model_name} failed: {str(model_error)}")
+                    continue
+            
+            if not test_successful:
+                logger.error("All Claude models failed during initialization")
+                self.claude_client = None
                 
-                # Test with models that work in your other project
-                working_models = [
-                    "claude-3-5-sonnet-20241022",  # Latest Sonnet
-                    "claude-3-haiku-20240307",     # Haiku fallback
-                    "claude-3-sonnet-20240229"     # Original Sonnet
-                ]
-                
-                test_successful = False
-                for model_name in working_models:
-                    try:
-                        test_response = self.claude_client.messages.create(
-                            model=model_name,
-                            max_tokens=10,
-                            messages=[{"role": "user", "content": "Hello"}]
-                        )
-                        logger.info(f"Claude connection successful with model: {model_name}")
-                        self.working_claude_model = model_name
-                        test_successful = True
-                        break
-                    except Exception as model_error:
-                        logger.warning(f"Claude model {model_name} failed: {str(model_error)}")
-                        continue
-                
-                if not test_successful:
-                    logger.error("All Claude models failed during initialization")
-                    
-            else:
-                logger.warning("CLAUDE_API_KEY not found")
-        except ImportError:
-            logger.error("anthropic library not installed")
-        except Exception as e:
-            logger.error(f"Claude initialization failed: {str(e)}")
+        else:
+            logger.warning("CLAUDE_API_KEY not found")
             self.claude_client = None
+    except ImportError:
+        logger.error("anthropic library not installed")
+        self.claude_client = None
+    except Exception as e:
+        logger.error(f"Claude initialization failed: {str(e)}")
+        self.claude_client = None
 
+def analyze_with_claude(self, question: str) -> Dict:
+    """Analyze question with Claude using working model - FIXED VERSION"""
+    if not self.claude_client:
+        return {
+            'success': False,
+            'analysis': f'Claude analysis not available for: {question}',
+            'error': 'Claude client not available'
+        }
+    
+    try:
+        prompt = f"""You are a Brisbane property research specialist. Analyze this question and provide insights:
+
+Question: "{question}"
+
+Please provide:
+1. What type of property question this is (development, market, infrastructure, zoning, etc.)
+2. Which specific Brisbane suburbs/areas are most relevant
+3. What data sources would help answer this question
+4. Key insights to look for in the data
+
+Keep your response concise and focused specifically on Brisbane, Queensland, Australia."""
+
+        # Use the working model from initialization - exactly like your JS app
+        model_to_use = getattr(self, 'working_claude_model', 'claude-3-5-sonnet-20241022')
+        
+        # Minimal, explicit API call - matching your working JS pattern
+        response = self.claude_client.messages.create(
+            model=model_to_use,
+            max_tokens=1000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        
+        return {
+            'success': True,
+            'analysis': response.content[0].text,
+            'model_used': model_to_use,
+            'error': None
+        }
+        
+    except Exception as e:
+        logger.error(f"Claude analysis failed: {str(e)}")
+        return {
+            'success': False,
+            'analysis': f'Claude analysis failed for: {question}',
+            'error': str(e)
+        }
 
 
     
