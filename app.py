@@ -43,6 +43,7 @@ app = Flask(__name__)
 # Configure CORS
 CORS(app, origins=[
     'https://curam-ai.com.au',
+    'https://curam-ai.com.au/python-hub/',
     'http://localhost:3000',
     'http://localhost:8000',
     '*'  # Remove in production
@@ -94,11 +95,13 @@ def index():
 def health():
     """Health check endpoint"""
     try:
+        logger.info("Health check requested")
+        
         response_data = {
             'status': 'healthy',
             'timestamp': datetime.now().isoformat(),
             'python_version': sys.version.split()[0],
-            'flask_version': Flask.__version__,
+            'flask_running': True,
             'environment_variables': {
                 'CLAUDE_API_KEY': 'Set' if os.getenv('CLAUDE_API_KEY') else 'Missing',
                 'GOOGLE_API_KEY': 'Set' if os.getenv('GOOGLE_API_KEY') else 'Missing',
@@ -128,6 +131,18 @@ def health():
             'error': str(e),
             'timestamp': datetime.now().isoformat()
         }), 500
+
+# Add static file serving (with subdirectory support)
+@app.route('/assets/<path:filename>')
+def serve_assets(filename):
+    """Serve static assets (CSS, JS) from assets directory"""
+    return send_from_directory('assets', filename)
+
+# Also serve assets from python-hub path for subdirectory deployment
+@app.route('/python-hub/assets/<path:filename>')
+def serve_assets_subdir(filename):
+    """Serve static assets for subdirectory deployment"""
+    return send_from_directory('assets', filename)
 
 @app.route('/api/test-claude', methods=['POST'])
 def test_claude():
@@ -214,156 +229,3 @@ def test_huggingface():
         # Test with a simple summarization model
         response = hf_client.text_generation(
             prompt=f"Summarize this text: {test_message}",
-            model="microsoft/DialoGPT-medium",
-            max_new_tokens=50
-        )
-        
-        return jsonify({
-            'success': True,
-            'service': 'HuggingFace',
-            'response': response,
-            'timestamp': datetime.now().isoformat()
-        })
-        
-    except Exception as e:
-        logger.error(f"HuggingFace test failed: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'service': 'HuggingFace'
-        }), 500
-
-@app.route('/api/test-feeds', methods=['GET'])
-def test_feeds():
-    """Test RSS feed parsing"""
-    try:
-        if not FEEDPARSER_AVAILABLE:
-            return jsonify({
-                'success': False,
-                'error': 'Feedparser not available',
-                'details': 'Check library installation'
-            }), 500
-        
-        # Test with a simple, reliable feed
-        test_feed_url = "https://www.realestate.com.au/news/rss/"
-        
-        feed = feedparser.parse(test_feed_url)
-        
-        if feed.bozo:
-            return jsonify({
-                'success': False,
-                'error': 'Feed parsing error',
-                'details': str(feed.bozo_exception)
-            }), 500
-        
-        # Get first few entries
-        entries = []
-        for entry in feed.entries[:3]:
-            entries.append({
-                'title': entry.get('title', 'No title'),
-                'link': entry.get('link', 'No link'),
-                'published': entry.get('published', 'No date')
-            })
-        
-        return jsonify({
-            'success': True,
-            'service': 'RSS Feeds',
-            'feed_title': feed.feed.get('title', 'Unknown'),
-            'entries_count': len(feed.entries),
-            'sample_entries': entries,
-            'timestamp': datetime.now().isoformat()
-        })
-        
-    except Exception as e:
-        logger.error(f"Feed test failed: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'service': 'RSS Feeds'
-        }), 500
-
-# Add static file serving (with subdirectory support)
-@app.route('/assets/<path:filename>')
-def serve_assets(filename):
-    """Serve static assets (CSS, JS) from assets directory"""
-    return send_from_directory('assets', filename)
-
-# Also serve assets from python-hub path for subdirectory deployment
-@app.route('/python-hub/assets/<path:filename>')
-def serve_assets_subdir(filename):
-    """Serve static assets for subdirectory deployment"""
-    return send_from_directory('assets', filename)
-
-# HTML template for the demo page (now loads external assets)
-INDEX_HTML = '''<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brisbane Property Intelligence - Connection Testing</title>
-    <link rel="stylesheet" href="../assets/css/style.css">
-</head>
-<body>
-    <div class="header">
-        <h1>🏠 Brisbane Property Intelligence</h1>
-        <p>Multi-LLM Connection Testing Dashboard</p>
-        <div><small>Running from: https://curam-ai.com.au/python-hub/</small></div>
-    </div>
-
-    <div class="status-grid">
-        <div class="status-card">
-            <h3>System Status</h3>
-            <div id="system-status">
-                <div class="loading">Loading system status...</div>
-            </div>
-        </div>
-        
-        <div class="status-card">
-            <h3>API Keys</h3>
-            <div id="api-status">
-                <div class="loading">Checking API keys...</div>
-            </div>
-        </div>
-        
-        <div class="status-card">
-            <h3>Libraries</h3>
-            <div id="library-status">
-                <div class="loading">Checking libraries...</div>
-            </div>
-        </div>
-        
-        <div class="status-card">
-            <h3>LLM Clients</h3>
-            <div id="client-status">
-                <div class="loading">Checking LLM clients...</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="test-section">
-        <h3>🤖 LLM API Testing</h3>
-        <p>Test each LLM service individually:</p>
-        
-        <input type="text" id="test-message" class="input-field" 
-               placeholder="Enter test message (or use default)" 
-               value="Tell me one interesting fact about Brisbane.">
-        
-        <div>
-            <button class="test-button" onclick="testLLM('claude')">Test Claude</button>
-            <button class="test-button" onclick="testLLM('gemini')">Test Gemini</button>
-            <button class="test-button" onclick="testLLM('huggingface')">Test HuggingFace</button>
-            <button class="test-button" onclick="testFeeds()">Test RSS Feeds</button>
-        </div>
-        
-        <div id="test-response" class="response-area" style="display: none;"></div>
-    </div>
-
-    <script src="../assets/js/dashboard.js"></script>
-</body>
-</html>'''
-
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    debug_mode = os.environ.get('FLASK_ENV', 'production') == 'development'
-    logger.info(f"Starting Brisbane Property Intelligence on port {port}")
-    app.run(host='0.0.0.0', port=port, debug=debug_mode)
