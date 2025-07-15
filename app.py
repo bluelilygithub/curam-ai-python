@@ -118,6 +118,148 @@ def health():
             'timestamp': datetime.now().isoformat()
         }), 500
 
+# -------------------------------------------------------------------------
+
+# Add this endpoint to your app.py file
+
+@app.route('/debug/run-claude-test', methods=['GET'])
+def run_claude_debug():
+    """Run the Claude debug test via web endpoint"""
+    import io
+    import contextlib
+    
+    # Capture the debug output
+    output_buffer = io.StringIO()
+    
+    try:
+        with contextlib.redirect_stdout(output_buffer):
+            # Run the debug functions
+            result = {
+                'timestamp': datetime.now().isoformat(),
+                'debug_output': [],
+                'tests': {}
+            }
+            
+            # Check environment
+            print("🐍 Python Environment Check")
+            print("=" * 30)
+            print(f"Python version: {sys.version}")
+            print(f"Current working directory: {os.getcwd()}")
+            
+            # Check API keys
+            print("\n🔑 API Keys Check")
+            print("=" * 20)
+            
+            claude_key = os.getenv('CLAUDE_API_KEY')
+            gemini_key = os.getenv('GEMINI_API_KEY')
+            
+            if claude_key:
+                print(f"✅ CLAUDE_API_KEY: {claude_key[:8]}...{claude_key[-4:]}")
+                result['tests']['claude_key'] = 'found'
+            else:
+                print("❌ CLAUDE_API_KEY: Not found")
+                result['tests']['claude_key'] = 'missing'
+            
+            if gemini_key:
+                print(f"✅ GEMINI_API_KEY: {gemini_key[:8]}...{gemini_key[-4:]}")
+                result['tests']['gemini_key'] = 'found'
+            else:
+                print("❌ GEMINI_API_KEY: Not found")
+                result['tests']['gemini_key'] = 'missing'
+            
+            # Test Claude API
+            print("\n🔍 Claude API Debug Test")
+            print("=" * 50)
+            
+            if not claude_key:
+                print("❌ Cannot test Claude - API key missing")
+                result['tests']['claude_api'] = 'skipped_no_key'
+            else:
+                try:
+                    import anthropic
+                    print("✅ anthropic library imported successfully")
+                    
+                    client = anthropic.Anthropic(api_key=claude_key.strip())
+                    print("✅ Claude client initialized")
+                    
+                    # Test working models from JS app
+                    working_models = [
+                        "claude-3-5-sonnet-20241022",
+                        "claude-3-haiku-20240307",
+                        "claude-3-sonnet-20240229"
+                    ]
+                    
+                    successful_models = []
+                    
+                    for model_name in working_models:
+                        print(f"\n🤖 Testing model: {model_name}")
+                        try:
+                            response = client.messages.create(
+                                model=model_name,
+                                max_tokens=50,
+                                messages=[{"role": "user", "content": "Hello"}]
+                            )
+                            print(f"✅ SUCCESS: {model_name}")
+                            successful_models.append(model_name)
+                        except Exception as e:
+                            print(f"❌ FAILED: {model_name} - {str(e)}")
+                    
+                    result['tests']['claude_api'] = {
+                        'status': 'completed',
+                        'successful_models': successful_models,
+                        'total_tested': len(working_models)
+                    }
+                    
+                    if successful_models:
+                        print(f"\n✅ {len(successful_models)} Claude models working!")
+                    else:
+                        print("\n❌ No Claude models working")
+                        
+                except Exception as e:
+                    print(f"❌ Claude test failed: {str(e)}")
+                    result['tests']['claude_api'] = {'status': 'failed', 'error': str(e)}
+            
+            # Test Gemini for comparison
+            print("\n🤖 Gemini API Comparison Test")
+            print("=" * 35)
+            
+            if not gemini_key:
+                print("❌ Cannot test Gemini - API key missing")
+                result['tests']['gemini_api'] = 'skipped_no_key'
+            else:
+                try:
+                    import google.generativeai as genai
+                    genai.configure(api_key=gemini_key.strip())
+                    
+                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    response = model.generate_content("Hello")
+                    print("✅ Gemini test successful!")
+                    result['tests']['gemini_api'] = 'working'
+                    
+                except Exception as e:
+                    print(f"❌ Gemini test failed: {e}")
+                    result['tests']['gemini_api'] = {'status': 'failed', 'error': str(e)}
+        
+        # Get the captured output
+        debug_output = output_buffer.getvalue()
+        result['debug_output'] = debug_output.split('\n')
+        
+        return jsonify({
+            'success': True,
+            'result': result,
+            'debug_text': debug_output
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'debug_output': output_buffer.getvalue().split('\n') if output_buffer else []
+        }), 500
+
+
+# -----------------------------------------------------------------------
+
 @app.route('/api/property/questions', methods=['GET'])
 def get_property_questions():
     """Get preset questions plus popular questions from database"""
