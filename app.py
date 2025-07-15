@@ -1,4 +1,4 @@
-from flask import Flask, request, send_file, jsonify
+from flask import Flask, request, send_file, jsonify, Response
 from flask_cors import CORS
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -21,6 +21,10 @@ import time
 import random
 import re
 
+# Brisbane Property Intelligence imports
+from llm_pipeline import BrisbanePropertyPipeline
+from database import PropertyDatabase
+
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -42,7 +46,10 @@ UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
-# Initialize scraper with error handling
+# Initialize Brisbane Property Intelligence
+property_pipeline = BrisbanePropertyPipeline()
+
+# Initialize scraper with error handling (keep existing scraper if needed)
 scraper = None
 try:
     from scraper import WebScraper
@@ -52,34 +59,65 @@ except Exception as e:
     logger.error(f"Scraper initialization failed: {str(e)}")
     scraper = None
 
+# ===== MAIN ENDPOINTS =====
+
 @app.route('/')
 def index():
+    """Brisbane Property Intelligence API"""
     return jsonify({
-        'name': 'Curam AI - Intelligence & Analytics API',
-        'version': '2.1.0',
-        'description': 'Flask API with pandas, matplotlib, web scraping, PDF generation, and AI intelligence',
+        'name': 'Brisbane Property Intelligence API',
+        'version': '1.0.0',
+        'description': 'Multi-LLM Brisbane property analysis with Claude, Gemini, and real-time data scraping',
         'endpoints': {
             'health': '/health',
-            'upload_csv': 'POST /api/upload-csv',
-            'generate_report': 'POST /api/generate-report',
-            'intelligence_pipeline': 'POST /api/full-intelligence-pipeline',
-            'visual_report': 'POST /api/generate-visual-report',
-            'scraper_apis': '/api/scraper/*',
-            'analytics': '/api/analytics/*'
+            'property_questions': 'GET /api/property/questions',
+            'property_analyze': 'POST /api/property/analyze',
+            'property_stream': 'POST /api/property/analyze-stream',
+            'property_history': 'GET /api/property/history',
+            'property_query_details': 'GET /api/property/query/<id>',
+            'property_reset': 'POST /api/property/reset',
+            'property_stats': 'GET /api/property/stats',
+            'email_results': 'POST /api/property/email-results'
         },
         'status': 'running',
-        'features': ['CSV Analysis', 'Web Scraping', 'AI Intelligence', 'Visual Reports'],
+        'features': [
+            'Multi-LLM Analysis (Claude + Gemini)',
+            'Real-time Brisbane Property Data',
+            'Query History & Analytics',
+            'Streaming Progress Updates',
+            'Brisbane-specific Insights'
+        ],
         'ai_services': {
-            'claude': 'Available (simulated)',
-            'gemini': 'Available (simulated)', 
-            'stability_ai': 'Available (simulated)'
-        }
+            'claude': 'Available' if property_pipeline.claude_client else 'Mock Mode',
+            'gemini': 'Available' if property_pipeline.gemini_model else 'Mock Mode',
+            'data_scraping': 'Active'
+        },
+        'preset_questions': property_pipeline.get_preset_questions(),
+        'data_sources': [
+            'Brisbane City Council RSS',
+            'Property Observer Brisbane',
+            'RealEstate.com.au News',
+            'Queensland Government Data'
+        ]
     })
 
 @app.route('/health')
 def health():
+    """Health check for Brisbane Property Intelligence"""
     try:
         logger.info("Health check requested")
+        
+        # Test database connection
+        try:
+            stats = property_pipeline.get_database_stats()
+            database_status = True
+        except Exception as e:
+            database_status = False
+            logger.error(f"Database health check failed: {str(e)}")
+        
+        # Test LLM connections
+        claude_status = property_pipeline.claude_client is not None
+        gemini_status = property_pipeline.gemini_model is not None
         
         response_data = {
             'status': 'healthy',
@@ -87,10 +125,16 @@ def health():
             'python_version': sys.version.split()[0],
             'services': {
                 'flask': True,
-                'pandas': True,
-                'matplotlib': True,
-                'scraper': scraper is not None,
-                'ai_intelligence': True
+                'database': database_status,
+                'claude': claude_status,
+                'gemini': gemini_status,
+                'data_scraping': True,
+                'scraper': scraper is not None
+            },
+            'database_stats': stats if database_status else {},
+            'environment': {
+                'claude_api_configured': bool(os.getenv('CLAUDE_API_KEY')),
+                'gemini_api_configured': bool(os.getenv('GEMINI_API_KEY'))
             }
         }
         
@@ -98,12 +142,22 @@ def health():
         try:
             response_data['flask_version'] = Flask.__version__
             response_data['pandas_version'] = pd.__version__
-            response_data['matplotlib_version'] = matplotlib.__version__
+            response_data['requests_version'] = requests.__version__
         except Exception as e:
             response_data['library_error'] = str(e)
         
-        logger.info(f"Health check successful: {response_data}")
-        return jsonify(response_data)
+        overall_status = all([
+            response_data['services']['flask'],
+            response_data['services']['database']
+        ])
+        
+        if not overall_status:
+            response_data['status'] = 'degraded'
+        
+        status_code = 200 if overall_status else 503
+        
+        logger.info(f"Health check completed: {response_data['status']}")
+        return jsonify(response_data), status_code
         
     except Exception as e:
         logger.error(f"Health check failed: {str(e)}")
@@ -113,238 +167,271 @@ def health():
             'timestamp': datetime.now().isoformat()
         }), 500
 
-# ===== AI INTELLIGENCE PLATFORM ENDPOINTS =====
+# ===== BRISBANE PROPERTY INTELLIGENCE ENDPOINTS =====
 
-@app.route('/api/full-intelligence-pipeline', methods=['POST'])
-def full_intelligence_pipeline():
-    """Complete AI analysis pipeline with enhanced responses"""
+@app.route('/api/property/questions', methods=['GET'])
+def get_property_questions():
+    """Return dropdown questions (preset + popular from database)"""
     try:
-        data = request.get_json()
-        query = data.get('query', 'Unknown query')
-        industry = data.get('industry', 'general')
-        
-        logger.info(f"Intelligence analysis request: {query} ({industry})")
-        
-        # Simulate realistic processing time
-        time.sleep(random.uniform(1.5, 3.0))
-        
-        # Generate enhanced AI responses
-        claude_analysis = generate_enhanced_claude_analysis(query, industry)
-        gemini_insights = generate_enhanced_gemini_insights(query, industry)
-        
-        # Simulate data source analysis
-        sources_analyzed = simulate_data_sources(query, industry)
+        questions = property_pipeline.get_popular_questions(15)
         
         response = {
             'success': True,
-            'query': query,
-            'industry': industry,
-            'sources_analyzed': sources_analyzed['count'],
-            'source_details': sources_analyzed['sources'],
-            'claude_analysis': claude_analysis,
-            'gemini_insights': gemini_insights,
-            'timestamp': datetime.now().isoformat(),
-            'processing_time': round(random.uniform(1.5, 3.0), 2)
-        }
-        
-        logger.info(f"Intelligence analysis completed for: {query}")
-        return jsonify(response)
-        
-    except Exception as e:
-        logger.error(f"Intelligence pipeline error: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/generate-visual-report', methods=['POST'])
-def generate_visual_report():
-    """Generate visual charts for analysis"""
-    try:
-        data = request.get_json()
-        description = data.get('description', 'Analysis Chart')
-        
-        logger.info(f"Visual report request: {description}")
-        
-        # For demo purposes, we'll return success without actual image generation
-        # In production, this would call Stability AI API
-        response = {
-            'success': True,
-            'description': description,
-            'image_data': None,  # Frontend will use placeholder chart
+            'questions': questions,
+            'preset_questions': property_pipeline.get_preset_questions(),
             'timestamp': datetime.now().isoformat()
         }
         
         return jsonify(response)
         
     except Exception as e:
-        logger.error(f"Visual generation error: {str(e)}")
+        logger.error(f"Get questions error: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)
         }), 500
 
-# ===== ENHANCED AI ANALYSIS FUNCTIONS =====
-
-def generate_enhanced_claude_analysis(query, industry):
-    """Generate high-quality Claude-style analysis with deeper insights"""
-    query_lower = query.lower()
-    
-    # Enhanced templates with comprehensive analysis
-    if 'gpu' in query_lower or 'graphic' in query_lower or 'processing' in query_lower:
-        return """The graphics processing unit market is experiencing transformational growth driven by AI workloads, with datacenter GPU revenue now exceeding gaming segments for major manufacturers. NVIDIA maintains dominant market position with approximately 88% share in AI training chips, though AMD's MI300 series and Intel's emerging Gaudi processors represent growing competitive pressure.
-
-Market Dynamics: The shift from gaming-centric to AI-optimized architectures has fundamentally altered GPU design priorities. Memory bandwidth, parallel processing efficiency, and power optimization now drive innovation cycles. Enterprise customers increasingly demand specialized AI accelerators rather than repurposed gaming hardware.
-
-Supply Chain Evolution: Geopolitical tensions have accelerated domestic chip manufacturing initiatives, with US CHIPS Act funding and European semiconductor sovereignty programs reshaping global production. Taiwan's TSMC remains critical for advanced node manufacturing, creating strategic vulnerabilities.
-
-Future Outlook: Edge AI deployment requirements are driving development of low-power, high-efficiency processing solutions. Neuromorphic chips and quantum processing represent emerging paradigms that could disrupt traditional GPU architectures within 5-7 years.
-
-Strategic Implications: Companies should diversify supplier relationships, invest in software optimization for multi-vendor hardware, and prepare for architectural transitions as Moore's Law scaling becomes economically challenging."""
-
-    elif 'ai' in query_lower and 'industry' in query_lower:
-        return """The artificial intelligence industry has reached an inflection point where enterprise adoption accelerates beyond experimental phases into production deployment at scale. Large language models, computer vision, and autonomous systems represent the three primary growth vectors, each with distinct market dynamics and competitive landscapes.
-
-Enterprise Transformation: AI implementation has moved from isolated use cases to comprehensive workflow integration. Companies report 15-30% productivity gains in knowledge work, with particular strength in content generation, code development, and customer service automation. However, integration complexity and skill gaps remain significant barriers.
-
-Infrastructure Evolution: The computational demands of modern AI models have created a new infrastructure category focused on training and inference optimization. Cloud providers are developing AI-specific hardware and services, while edge computing growth enables real-time AI applications in manufacturing, healthcare, and autonomous vehicles.
-
-Regulatory Landscape: Government initiatives worldwide are establishing AI governance frameworks, with EU AI Act leading comprehensive regulation. These frameworks will significantly impact development timelines, deployment strategies, and competitive positioning across different market segments.
-
-Investment Patterns: Venture capital flows increasingly favor AI applications with clear ROI metrics rather than purely technical innovations. Enterprise AI software represents the fastest-growing segment, while hardware infrastructure investments focus on specialized chips and edge computing solutions.
-
-Competitive Dynamics: Big Tech companies leverage platform advantages and compute resources, while specialized AI companies compete on domain expertise and customer intimacy. Open-source models are democratizing access but creating new challenges around model governance and intellectual property."""
-
-    # Industry-specific comprehensive analysis
-    templates = {
-        'technology': f"""The technology sector demonstrates unprecedented convergence across multiple innovation vectors, with artificial intelligence, quantum computing, and biotechnology creating synergistic opportunities. Cloud infrastructure has evolved beyond simple compute provisioning to comprehensive AI-as-a-Service platforms, fundamentally altering competitive dynamics.
-
-Digital Transformation Acceleration: Enterprise software adoption has permanently shifted toward cloud-native, API-first architectures. Companies investing in modern infrastructure report 25-40% faster time-to-market for new products. Legacy system migration represents a $500B+ opportunity through 2027.
-
-Emerging Technology Integration: The intersection of AI, 5G, and edge computing enables previously impossible applications in autonomous vehicles, smart manufacturing, and personalized healthcare. First-mover advantages in these convergence areas are creating substantial market valuations.
-
-Talent and Skills Evolution: The shift toward AI-augmented development is reshaping software engineering roles. Companies successfully adapting to AI-assisted workflows report 35% productivity improvements, while those lagging face increasing competitive disadvantage.
-
-Regulatory and Ethical Considerations: Technology companies face growing scrutiny around data privacy, algorithmic bias, and market concentration. Proactive compliance and ethical AI frameworks are becoming competitive differentiators rather than regulatory burdens.
-
-Investment Strategy: Focus on companies with strong data moats, AI-native architectures, and proven ability to monetize emerging technologies. Avoid legacy technology companies without clear transformation roadmaps.""",
-
-        'automotive': f"""The automotive industry is undergoing its most significant transformation since the invention of the automobile, with electrification, autonomous driving, and mobility services converging to reshape the entire value chain. Traditional automotive manufacturers face existential challenges as software capabilities become primary differentiators.
-
-Electrification Timeline: Battery cost reductions have reached tipping points where EVs achieve total cost of ownership parity with ICE vehicles in most markets. Range anxiety continues diminishing as charging infrastructure expands and battery energy density improves 8-12% annually.
-
-Autonomous Vehicle Progress: While full autonomy remains elusive, Level 3-4 systems in controlled environments are achieving commercial viability. Waymo's robotaxi service expansion and Tesla's FSD improvements demonstrate different approaches to autonomous capabilities, with distinct risk-reward profiles.
-
-Supply Chain Transformation: The shift from mechanical to electronic components is realigning supplier relationships. Semiconductor shortage experiences have accelerated vertical integration strategies and geographic diversification of critical component sourcing.
-
-Mobility as a Service: Urban transportation patterns favor access over ownership, particularly among younger demographics. Ride-sharing, car-sharing, and micromobility solutions are creating new business models and challenging traditional automotive revenue streams.
-
-Strategic Positioning: Success requires simultaneous execution across electrification, software development, and customer experience innovation. Companies unable to master all three dimensions face marginalization in the evolving mobility ecosystem.""",
-
-        'healthcare': f"""Healthcare innovation is accelerating through convergence of digital health, personalized medicine, and AI-driven diagnostics, fundamentally transforming patient care delivery and medical research methodologies. The COVID-19 pandemic permanently altered healthcare delivery models and accelerated technology adoption timelines.
-
-Digital Health Integration: Telemedicine adoption reached 85% of healthcare providers during the pandemic and has stabilized at 60%+ penetration. Remote patient monitoring and virtual care delivery models demonstrate superior outcomes for chronic disease management while reducing costs 20-35%.
-
-Personalized Medicine Advancement: Genomic sequencing costs have declined 99.9% since 2003, enabling routine integration into clinical workflows. Precision medicine approaches show particular promise in oncology, with targeted therapies achieving significantly better outcomes than traditional chemotherapy approaches.
-
-AI-Powered Diagnostics: Machine learning models now exceed human radiologist performance in specific imaging tasks. Early detection algorithms for diabetic retinopathy, skin cancer, and cardiac abnormalities are gaining FDA approval and clinical adoption.
-
-Regulatory Innovation: FDA breakthrough device pathways and software as medical device guidelines are accelerating approval timelines for digital health innovations. European MDR implementation creates additional compliance requirements but also establishes global quality standards.
-
-Market Opportunities: Focus on solutions addressing physician burnout, chronic disease management, and health equity challenges. Successful companies demonstrate clear clinical outcomes, regulatory compliance, and sustainable reimbursement models."""
-
-    }
-    
-    # Get industry-specific analysis or default
-    if industry in templates:
-        return templates[industry]
-    else:
-        # Generate contextual analysis for other industries
-        return f"""The {industry} sector is experiencing significant transformation driven by digital innovation, changing consumer expectations, and evolving regulatory landscapes. Companies that successfully navigate these transitions are positioning themselves for sustained competitive advantage.
-
-Technology Integration: Digital transformation initiatives across {industry} organizations are showing measurable ROI, with leaders reporting 20-30% efficiency improvements through automation and data analytics implementation. Cloud adoption and AI integration are becoming strategic imperatives rather than optional upgrades.
-
-Market Dynamics: Consumer behavior shifts and regulatory changes are reshaping traditional business models. Organizations with agile operating models and customer-centric approaches are capturing disproportionate market share while legacy players struggle to adapt.
-
-Competitive Landscape: New entrants leveraging technology advantages are disrupting established market hierarchies. Successful companies are building platform-based business models that create network effects and sustainable competitive moats.
-
-Future Outlook: The next 3-5 years will determine market leadership positions as current transformation investments mature. Companies investing proactively in technology capabilities, talent development, and customer experience innovation are best positioned for long-term success.
-
-Strategic Recommendations: Prioritize data-driven decision making, invest in digital capabilities, and maintain customer-centric focus while building operational resilience for future market volatility."""
-
-def generate_enhanced_gemini_insights(query, industry):
-    """Generate Gemini-style data insights with enhanced metrics"""
-    # Generate realistic metrics based on industry and query
-    base_growth = {'technology': 35, 'automotive': 25, 'healthcare': 20, 'finance': 30, 'manufacturing': 18, 'retail': 15, 'energy': 28, 'aerospace': 22}
-    growth_rate = base_growth.get(industry, 25) + random.randint(-8, 12)
-    
-    market_size = random.randint(8, 85)
-    players = random.randint(3, 9)
-    market_share = random.randint(52, 78)
-    
-    # Add query-specific metrics
-    query_lower = query.lower()
-    if 'gpu' in query_lower or 'graphic' in query_lower:
-        market_size = random.randint(45, 120)
-        growth_rate = random.randint(28, 45)
-    elif 'ai' in query_lower:
-        growth_rate = random.randint(35, 55)
-        market_size = random.randint(25, 95)
-    elif 'electric' in query_lower or 'tesla' in query_lower:
-        growth_rate = random.randint(22, 38)
-        market_size = random.randint(15, 60)
-    
-    investment_change = growth_rate - random.randint(5, 12)
-    adoption_rate = growth_rate // 2 + random.randint(-3, 8)
-    cost_reduction = random.randint(8, 22)
-    efficiency_gain = random.randint(15, 35)
-    roi_improvement = random.randint(12, 28)
-    
-    templates = {
-        'technology': f"Technology sector analysis reveals {growth_rate}% YoY growth with sustained momentum. Key performance indicators show R&D investment increased {investment_change}%, enterprise adoption rates up {adoption_rate}%, implementation costs decreased {cost_reduction}%. Operational efficiency improved {efficiency_gain}% while ROI increased {roi_improvement}%. Market concentration shows {players} major platforms controlling {market_share}% of total addressable market valued at ${market_size}B. Cloud infrastructure spending represents largest growth segment with 40% of total enterprise IT budgets.",
+@app.route('/api/property/analyze', methods=['POST'])
+def analyze_property_question():
+    """Main LLM pipeline endpoint"""
+    try:
+        data = request.get_json()
+        question = data.get('question', '').strip()
         
-        'automotive': f"Automotive industry data indicates {growth_rate}% expansion in electrification segment with accelerating transformation metrics. Production capacity utilization up {investment_change}%, battery costs down {cost_reduction}%, charging infrastructure deployment up {adoption_rate}%. Manufacturing efficiency gained {efficiency_gain}% through automation while supply chain optimization delivered {roi_improvement}% cost savings. Market leadership distributed among {players} major manufacturers holding {market_share}% combined market share. Global EV market size approaching ${market_size}B with projected compound annual growth rate of 28%.",
+        if not question:
+            return jsonify({
+                'success': False,
+                'error': 'Question is required'
+            }), 400
         
-        'healthcare': f"Healthcare technology sector demonstrates {growth_rate}% annual growth driven by comprehensive digital transformation initiatives. Telehealth adoption increased {adoption_rate}%, regulatory approval timelines reduced {cost_reduction}%, clinical trial efficiency up {investment_change}%. Patient outcome improvements of {efficiency_gain}% while healthcare delivery costs decreased {roi_improvement}%. Market dynamics show {players} leading platforms capturing {market_share}% of digital health investments totaling ${market_size}B annually. Precision medicine segment represents fastest-growing subsector.",
+        # Determine question type
+        preset_questions = property_pipeline.get_preset_questions()
+        question_type = 'preset' if question in preset_questions else 'custom'
         
-        'finance': f"Financial technology sector exhibits {growth_rate}% growth with strong underlying fundamentals and regulatory support. Digital payment volumes increased {adoption_rate}%, customer acquisition costs reduced {cost_reduction}%, regulatory compliance efficiency up {investment_change}%. Transaction processing speed improved {efficiency_gain}% while operational costs decreased {roi_improvement}%. Competitive landscape features {players} dominant platforms controlling {market_share}% of fintech market valued at ${market_size}B. Open banking initiatives driving innovation acceleration.",
+        logger.info(f"Processing property question: {question} (type: {question_type})")
         
-        'manufacturing': f"Manufacturing sector shows {growth_rate}% efficiency improvements through comprehensive automation adoption and Industry 4.0 implementation. Production optimization increased {investment_change}%, waste reduction achieved {cost_reduction}%, quality metrics improved {adoption_rate}%. Overall equipment effectiveness up {efficiency_gain}% while total cost of ownership reduced {roi_improvement}%. Industry consolidation features {players} major players representing {market_share}% of advanced manufacturing market worth ${market_size}B. Smart factory investments leading transformation.",
+        # Process through pipeline and collect all updates
+        updates = []
+        final_result = None
         
-        'retail': f"Retail industry demonstrates {growth_rate}% omnichannel growth with seamless digital integration across customer touchpoints. E-commerce conversion rates up {adoption_rate}%, customer acquisition costs down {cost_reduction}%, inventory efficiency improved {investment_change}%. Customer satisfaction increased {efficiency_gain}% while operational costs optimized {roi_improvement}%. Market share concentration shows {players} leading retailers controlling {market_share}% of online retail valued at ${market_size}B. Personalization technology driving competitive advantage.",
+        for update in property_pipeline.process_query(question, question_type):
+            updates.append(update)
+            if update['status'] == 'complete':
+                final_result = update.get('data', {})
         
-        'energy': f"Energy sector indicates {growth_rate}% renewable capacity growth annually with accelerating clean energy transition. Grid efficiency improvements up {investment_change}%, energy storage costs reduced {cost_reduction}%, renewable penetration increased {adoption_rate}%. System reliability improved {efficiency_gain}% while operational expenses decreased {roi_improvement}%. Market structure includes {players} major utilities controlling {market_share}% of clean energy investments totaling ${market_size}B. Smart grid technologies enabling transformation.",
+        # Return complete response
+        response = {
+            'success': True,
+            'question': question,
+            'question_type': question_type,
+            'processing_updates': updates,
+            'final_answer': final_result.get('final_answer', '') if final_result else '',
+            'processing_time': final_result.get('processing_time', 0) if final_result else 0,
+            'query_id': final_result.get('query_id') if final_result else None,
+            'timestamp': datetime.now().isoformat()
+        }
         
-        'aerospace': f"Aerospace industry shows {growth_rate}% recovery with strong innovation focus and sustainable technology integration. Manufacturing efficiency up {investment_change}%, development costs optimized {cost_reduction}%, sustainable technology adoption increased {adoption_rate}%. Production throughput improved {efficiency_gain}% while time-to-market reduced {roi_improvement}%. Market concentration features {players} prime contractors holding {market_share}% of commercial aerospace market valued at ${market_size}B. Next-generation propulsion systems driving innovation."
-    }
-    
-    return templates.get(industry, f"Cross-industry analysis demonstrates {growth_rate}% growth potential with strong market fundamentals and technological innovation drivers. Performance metrics indicate {adoption_rate}% adoption acceleration, {cost_reduction}% cost optimization, and {investment_change}% investment increase. Operational efficiency improved {efficiency_gain}% while return on investment enhanced {roi_improvement}%. Competitive dynamics show {players} key market participants controlling {market_share}% of total addressable market valued at ${market_size}B. Digital transformation initiatives driving sustainable competitive advantages.")
+        return jsonify(response)
+        
+    except Exception as e:
+        logger.error(f"Property analysis error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
-def simulate_data_sources(query, industry):
-    """Simulate data source collection for analysis"""
-    industry_sources = {
-        'technology': ['TechCrunch.com', 'VentureBeat.com', 'Ars Technica', 'The Verge', 'Wired.com', 'IEEE Spectrum', 'MIT Technology Review'],
-        'automotive': ['Automotive News', 'Motor Trend', 'Car and Driver', 'InsideEVs.com', 'Electrek.co', 'Reuters Autos', 'Automotive Dive'],
-        'healthcare': ['Modern Healthcare', 'Healthcare Dive', 'STAT News', 'MedTech Dive', 'BioPharma Dive', 'Health Affairs', 'NEJM.org'],
-        'finance': ['Financial Times', 'Bloomberg Markets', 'Reuters Finance', 'WSJ Markets', 'American Banker', 'Fintech News', 'CoinDesk.com'],
-        'manufacturing': ['Manufacturing.net', 'Industry Week', 'Plant Engineering', 'Automation World', 'Manufacturing Dive', 'Smart Industry', 'Assembly Magazine'],
-        'retail': ['Retail Dive', 'Chain Store Age', 'Progressive Grocer', 'Retail Leader', 'NRF.com', 'RetailWire.com', 'Modern Retail'],
-        'energy': ['Energy News', 'Renewable Energy World', 'Oil & Gas Journal', 'Utility Dive', 'Greentech Media', 'Energy Storage News', 'CleanTechnica'],
-        'aerospace': ['Aviation Week', 'FlightGlobal', 'Aerospace Daily', 'Space News', 'Defense News', 'Avionics International', 'Aerospace Testing']
-    }
-    
-    sources = industry_sources.get(industry, industry_sources['technology'])
-    count = random.randint(5, min(len(sources), 8))
-    selected_sources = random.sample(sources, count)
-    
-    return {
-        'count': count,
-        'sources': selected_sources
-    }
+@app.route('/api/property/analyze-stream', methods=['POST'])
+def analyze_property_stream():
+    """Stream processing updates in real-time"""
+    try:
+        data = request.get_json()
+        question = data.get('question', '').strip()
+        
+        if not question:
+            return jsonify({
+                'success': False,
+                'error': 'Question is required'
+            }), 400
+        
+        # Determine question type
+        preset_questions = property_pipeline.get_preset_questions()
+        question_type = 'preset' if question in preset_questions else 'custom'
+        
+        def generate_stream():
+            """Generate streaming response"""
+            try:
+                # Send initial message
+                yield f"data: {json.dumps({'status': 'started', 'message': f'Processing: {question}'})}\n\n"
+                
+                # Process through pipeline
+                for update in property_pipeline.process_query(question, question_type):
+                    yield f"data: {json.dumps(update)}\n\n"
+                
+                # Send completion signal
+                yield f"data: {json.dumps({'status': 'stream_complete'})}\n\n"
+                
+            except Exception as e:
+                error_update = {
+                    'status': 'error',
+                    'message': f'Streaming error: {str(e)}',
+                    'timestamp': datetime.now().isoformat()
+                }
+                yield f"data: {json.dumps(error_update)}\n\n"
+        
+        return Response(
+            generate_stream(),
+            content_type='text/event-stream',
+            headers={
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"Property stream error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
-# ===== ORIGINAL ENDPOINTS (UNCHANGED) =====
+@app.route('/api/property/history', methods=['GET'])
+def get_property_history():
+    """Get query history"""
+    try:
+        limit = request.args.get('limit', 50, type=int)
+        history = property_pipeline.get_query_history(limit)
+        
+        response = {
+            'success': True,
+            'history': history,
+            'count': len(history),
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        return jsonify(response)
+        
+    except Exception as e:
+        logger.error(f"Get history error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
-# CSV Upload and Analysis API
+@app.route('/api/property/query/<int:query_id>', methods=['GET'])
+def get_query_details(query_id):
+    """Get detailed information about a specific query"""
+    try:
+        details = property_pipeline.get_query_details(query_id)
+        
+        if not details:
+            return jsonify({
+                'success': False,
+                'error': 'Query not found'
+            }), 404
+        
+        response = {
+            'success': True,
+            'query_details': details,
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        return jsonify(response)
+        
+    except Exception as e:
+        logger.error(f"Get query details error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/property/reset', methods=['POST'])
+def reset_property_session():
+    """Reset database/session"""
+    try:
+        property_pipeline.reset_database()
+        
+        response = {
+            'success': True,
+            'message': 'Database reset successfully',
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        return jsonify(response)
+        
+    except Exception as e:
+        logger.error(f"Reset session error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/property/stats', methods=['GET'])
+def get_property_stats():
+    """Get database and processing statistics"""
+    try:
+        stats = property_pipeline.get_database_stats()
+        data_sources = property_pipeline.get_data_sources_status()
+        
+        response = {
+            'success': True,
+            'stats': stats,
+            'data_sources': data_sources,
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        return jsonify(response)
+        
+    except Exception as e:
+        logger.error(f"Get stats error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/property/email-results', methods=['POST'])
+def email_property_results():
+    """Email query results to user"""
+    try:
+        data = request.get_json()
+        query_id = data.get('query_id')
+        email = data.get('email')
+        
+        if not query_id or not email:
+            return jsonify({
+                'success': False,
+                'error': 'Query ID and email are required'
+            }), 400
+        
+        # Get query details
+        query_details = property_pipeline.get_query_details(query_id)
+        if not query_details:
+            return jsonify({
+                'success': False,
+                'error': 'Query not found'
+            }), 404
+        
+        # For now, return success (implement actual email sending later)
+        response = {
+            'success': True,
+            'message': f'Results would be sent to {email}',
+            'query_id': query_id,
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        return jsonify(response)
+        
+    except Exception as e:
+        logger.error(f"Email results error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# ===== KEEP EXISTING USEFUL ENDPOINTS =====
+
+# CSV Upload and Analysis API (keep this - it's useful)
 @app.route('/api/upload-csv', methods=['POST'])
 def upload_csv():
     try:
@@ -388,7 +475,7 @@ def upload_csv():
         logger.error(f"CSV upload error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# Generate Report API
+# Generate Report API (keep this - it's useful)
 @app.route('/api/generate-report', methods=['POST'])
 def generate_report_api():
     try:
@@ -420,265 +507,28 @@ def generate_report_api():
         logger.error(f"Report generation error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# Scraper APIs - Only available if scraper is working
-@app.route('/api/scraper/sites', methods=['GET'])
-def get_monitored_sites():
-    try:
-        if not scraper:
-            return jsonify({'success': False, 'error': 'Scraper not available'}), 500
-        
-        # Get sites directly from database
-        conn = sqlite3.connect('scraper.db')
-        cursor = conn.cursor()
-        cursor.execute('SELECT id, name, url, price_selector FROM monitored_sites')
-        sites = [{'id': row[0], 'name': row[1], 'url': row[2], 'price_selector': row[3]} for row in cursor.fetchall()]
-        conn.close()
-        
-        return jsonify({
-            'success': True,
-            'sites': sites
-        })
-    except Exception as e:
-        logger.error(f"Get sites error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+# ===== KEEP EXISTING SCRAPER ENDPOINTS IF NEEDED =====
 
-@app.route('/api/scraper/add-site', methods=['POST'])
-def add_site_api():
-    try:
-        if not scraper:
-            return jsonify({'success': False, 'error': 'Scraper not available'}), 500
-        
-        data = request.get_json()
-        name = data.get('name')
-        url = data.get('url')
-        price_selector = data.get('price_selector')
-        
-        if not all([name, url, price_selector]):
-            return jsonify({'success': False, 'error': 'Missing required fields'}), 400
-        
-        site_id = scraper.add_site(name, url, price_selector)
-        
-        return jsonify({
-            'success': True,
-            'message': f'Added {name} to monitoring list',
-            'site_id': site_id
-        })
-    except Exception as e:
-        logger.error(f"Add site error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+# Scraper APIs - Only if you want to keep existing scraper functionality
+if scraper:
+    @app.route('/api/scraper/sites', methods=['GET'])
+    def get_monitored_sites():
+        try:
+            conn = sqlite3.connect('scraper.db')
+            cursor = conn.cursor()
+            cursor.execute('SELECT id, name, url, price_selector FROM monitored_sites')
+            sites = [{'id': row[0], 'name': row[1], 'url': row[2], 'price_selector': row[3]} for row in cursor.fetchall()]
+            conn.close()
+            
+            return jsonify({
+                'success': True,
+                'sites': sites
+            })
+        except Exception as e:
+            logger.error(f"Get sites error: {str(e)}")
+            return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/scraper/scrape-now', methods=['POST'])
-def scrape_now_api():
-    try:
-        if not scraper:
-            return jsonify({'success': False, 'error': 'Scraper not available'}), 500
-        
-        results = scraper.scrape_all_sites()
-        return jsonify({
-            'success': True,
-            'results': results,
-            'timestamp': datetime.now().isoformat()
-        })
-    except Exception as e:
-        logger.error(f"Scrape now error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/scraper/price-history/<int:site_id>', methods=['GET'])
-def price_history_api(site_id):
-    try:
-        if not scraper:
-            return jsonify({'success': False, 'error': 'Scraper not available'}), 500
-        
-        history = scraper.get_price_history(site_id)
-        return jsonify({
-            'success': True,
-            'site_id': site_id,
-            'history': history
-        })
-    except Exception as e:
-        logger.error(f"Price history error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-# ANALYTICS ENDPOINTS
-
-@app.route('/api/analytics/summary', methods=['GET'])
-def analytics_summary():
-    """Get summary statistics"""
-    try:
-        if not scraper:
-            return jsonify({'success': False, 'error': 'Scraper not available'}), 500
-        
-        conn = sqlite3.connect('scraper.db')
-        cursor = conn.cursor()
-        
-        # Summary stats
-        cursor.execute('SELECT COUNT(*) FROM monitored_sites')
-        total_sites = cursor.fetchone()[0]
-        
-        cursor.execute('SELECT COUNT(*) FROM price_history')
-        total_data_points = cursor.fetchone()[0]
-        
-        cursor.execute('SELECT AVG(price) FROM price_history WHERE price > 0')
-        avg_price = cursor.fetchone()[0] or 0
-        
-        cursor.execute('SELECT MIN(price), MAX(price) FROM price_history WHERE price > 0')
-        price_range = cursor.fetchone()
-        min_price, max_price = price_range if price_range[0] else (0, 0)
-        
-        conn.close()
-        
-        return jsonify({
-            'success': True,
-            'summary': {
-                'total_sites': total_sites,
-                'total_data_points': total_data_points,
-                'average_price': round(avg_price, 2),
-                'price_range': {
-                    'min': min_price,
-                    'max': max_price
-                }
-            }
-        })
-        
-    except Exception as e:
-        logger.error(f"Analytics summary error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/analytics/price-comparison', methods=['GET'])
-def price_comparison():
-    """Get price comparison data for bar charts"""
-    try:
-        if not scraper:
-            return jsonify({'success': False, 'error': 'Scraper not available'}), 500
-        
-        conn = sqlite3.connect('scraper.db')
-        cursor = conn.cursor()
-        
-        # Average prices by site
-        cursor.execute('''
-            SELECT ms.name, AVG(ph.price) as avg_price, COUNT(ph.price) as data_points
-            FROM monitored_sites ms
-            LEFT JOIN price_history ph ON ms.id = ph.site_id
-            GROUP BY ms.id, ms.name
-            HAVING COUNT(ph.price) > 0
-            ORDER BY avg_price DESC
-        ''')
-        avg_prices = cursor.fetchall()
-        conn.close()
-        
-        raw_data = [{'name': row[0], 'avg_price': row[1], 'data_points': row[2]} for row in avg_prices]
-        
-        return jsonify({
-            'success': True,
-            'raw_data': raw_data
-        })
-        
-    except Exception as e:
-        logger.error(f"Price comparison error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/analytics/price-trends', methods=['GET'])
-def price_trends():
-    """Get price trends over time"""
-    try:
-        if not scraper:
-            return jsonify({'success': False, 'error': 'Scraper not available'}), 500
-        
-        conn = sqlite3.connect('scraper.db')
-        cursor = conn.cursor()
-        
-        # Price trends over time
-        cursor.execute('''
-            SELECT ms.name, ph.price, ph.scraped_at
-            FROM monitored_sites ms
-            JOIN price_history ph ON ms.id = ph.site_id
-            ORDER BY ph.scraped_at DESC
-            LIMIT 50
-        ''')
-        price_trends = cursor.fetchall()
-        conn.close()
-        
-        raw_data = [{'name': row[0], 'price': row[1], 'date': row[2]} for row in price_trends]
-        
-        return jsonify({
-            'success': True,
-            'raw_data': raw_data
-        })
-        
-    except Exception as e:
-        logger.error(f"Price trends error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/simulate-data', methods=['POST'])
-def simulate_data():
-    """Generate demo data for testing"""
-    try:
-        if not scraper:
-            return jsonify({'success': False, 'error': 'Scraper not available'}), 500
-        
-        data = request.get_json() or {}
-        days = data.get('days', 7)
-        
-        scraper.simulate_historical_data(days)
-        
-        return jsonify({
-            'success': True,
-            'message': f'Generated {days} days of demo data',
-            'timestamp': datetime.now().isoformat()
-        })
-        
-    except Exception as e:
-        logger.error(f"Simulate data error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-# Chart Generation API
-@app.route('/api/generate-chart', methods=['POST'])
-def generate_chart():
-    try:
-        data = request.get_json()
-        chart_data = data.get('data', [])
-        chart_type = data.get('type', 'line')
-        title = data.get('title', 'Chart')
-        
-        if not chart_data:
-            return jsonify({'success': False, 'error': 'No data provided'}), 400
-        
-        # Convert to DataFrame
-        df = pd.DataFrame(chart_data)
-        
-        # Create chart
-        plt.figure(figsize=(10, 6))
-        
-        if chart_type == 'histogram' and len(df.columns) > 0:
-            numeric_cols = df.select_dtypes(include=['number']).columns
-            if len(numeric_cols) > 0:
-                df[numeric_cols[0]].hist()
-                plt.title(f'Distribution of {numeric_cols[0]}')
-        elif chart_type == 'line' and len(df.columns) >= 2:
-            plt.plot(df.iloc[:, 0], df.iloc[:, 1])
-            plt.title(title)
-        else:
-            plt.text(0.5, 0.5, 'No suitable data for chart', ha='center', va='center')
-            plt.title('No Data')
-        
-        # Save to base64
-        img_buffer = io.BytesIO()
-        plt.savefig(img_buffer, format='png', bbox_inches='tight', dpi=150)
-        img_buffer.seek(0)
-        
-        img_base64 = base64.b64encode(img_buffer.read()).decode()
-        plt.close()
-        
-        return jsonify({
-            'success': True,
-            'chart': f'data:image/png;base64,{img_base64}',
-            'type': chart_type,
-            'timestamp': datetime.now().isoformat()
-        })
-        
-    except Exception as e:
-        logger.error(f"Chart generation error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+# ===== HELPER FUNCTIONS =====
 
 def generate_report(csv_file):
     """Generate PDF report from CSV file"""
@@ -737,5 +587,5 @@ def generate_report(csv_file):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('FLASK_ENV', 'production') == 'development'
-    logger.info(f"Starting Flask app on port {port}")
+    logger.info(f"Starting Brisbane Property Intelligence on port {port}")
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
