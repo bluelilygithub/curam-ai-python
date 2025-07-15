@@ -27,16 +27,31 @@ class SimpleLLMProcessor:
                 self.claude_client = anthropic.Anthropic(api_key=claude_key.strip())
                 logger.info("Claude client initialized successfully")
                 
-                # Test the connection with a simple call
-                try:
-                    test_response = self.claude_client.messages.create(
-                        model="claude-3-sonnet-20240229",
-                        max_tokens=10,
-                        messages=[{"role": "user", "content": "Hello"}]
-                    )
-                    logger.info("Claude connection test successful")
-                except Exception as test_error:
-                    logger.error(f"Claude connection test failed: {str(test_error)}")
+                # Test the connection with different models
+                model_names = [
+                    "claude-3-sonnet-20240229",
+                    "claude-3-5-sonnet-20240620", 
+                    "claude-3-5-sonnet-20241022",
+                    "claude-3-haiku-20240307"
+                ]
+                
+                test_successful = False
+                for model_name in model_names:
+                    try:
+                        test_response = self.claude_client.messages.create(
+                            model=model_name,
+                            max_tokens=10,
+                            messages=[{"role": "user", "content": "Hello"}]
+                        )
+                        logger.info(f"Claude connection successful with model: {model_name}")
+                        test_successful = True
+                        break
+                    except Exception as model_error:
+                        logger.warning(f"Claude model {model_name} test failed: {str(model_error)}")
+                        continue
+                
+                if not test_successful:
+                    logger.error("All Claude models failed during initialization")
                     # Don't set to None, maybe it will work for actual queries
             else:
                 logger.warning("CLAUDE_API_KEY not found")
@@ -106,11 +121,30 @@ Please provide:
 
 Keep your response concise and focused specifically on Brisbane, Queensland, Australia."""
 
-            response = self.claude_client.messages.create(
-                model="claude-3-sonnet-20240229",
-                max_tokens=1000,
-                messages=[{"role": "user", "content": prompt}]
-            )
+            # Try different Claude model names based on your working app
+            model_names = [
+                "claude-3-sonnet-20240229",
+                "claude-3-5-sonnet-20240620",
+                "claude-3-5-sonnet-20241022",
+                "claude-3-haiku-20240307"
+            ]
+            
+            response = None
+            for model_name in model_names:
+                try:
+                    response = self.claude_client.messages.create(
+                        model=model_name,
+                        max_tokens=1000,
+                        messages=[{"role": "user", "content": prompt}]
+                    )
+                    logger.info(f"Claude successful with model: {model_name}")
+                    break
+                except Exception as model_error:
+                    logger.warning(f"Claude model {model_name} failed: {str(model_error)}")
+                    continue
+            
+            if not response:
+                raise Exception("All Claude models failed")
             
             return {
                 'success': True,
