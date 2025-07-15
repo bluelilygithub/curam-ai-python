@@ -282,10 +282,16 @@ def test_feeds():
             'service': 'RSS Feeds'
         }), 500
 
-# Add static file serving
+# Add static file serving (with subdirectory support)
 @app.route('/assets/<path:filename>')
 def serve_assets(filename):
-    """Serve static assets (CSS, JS)"""
+    """Serve static assets (CSS, JS) from assets directory"""
+    return send_from_directory('assets', filename)
+
+# Also serve assets from python-hub path for subdirectory deployment
+@app.route('/python-hub/assets/<path:filename>')
+def serve_assets_subdir(filename):
+    """Serve static assets for subdirectory deployment"""
     return send_from_directory('assets', filename)
 
 # HTML template for the demo page (now loads external assets)
@@ -295,12 +301,13 @@ INDEX_HTML = '''<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Brisbane Property Intelligence - Connection Testing</title>
-    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/style.css">
 </head>
 <body>
     <div class="header">
         <h1>🏠 Brisbane Property Intelligence</h1>
         <p>Multi-LLM Connection Testing Dashboard</p>
+        <div><small>Running from: https://curam-ai.com.au/python-hub/</small></div>
     </div>
 
     <div class="status-grid">
@@ -351,7 +358,7 @@ INDEX_HTML = '''<!DOCTYPE html>
         <div id="test-response" class="response-area" style="display: none;"></div>
     </div>
 
-    <script src="/assets/js/dashboard.js"></script>
+    <script src="../assets/js/dashboard.js"></script>
 </body>
 </html>'''
 
