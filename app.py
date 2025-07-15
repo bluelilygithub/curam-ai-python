@@ -1,4 +1,4 @@
-rom flask import Flask, request, send_file, jsonify
+from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
 import pandas as pd
 import matplotlib.pyplot as plt
