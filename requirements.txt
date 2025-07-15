@@ -1,28 +1,15 @@
-# Core Flask
 Flask==2.3.3
 flask-cors==4.0.0
+pandas==2.0.3
+numpy==1.25.2
+matplotlib==3.7.2
+requests==2.31.0
+beautifulsoup4==4.12.2
+schedule==1.2.0
+reportlab==4.0.4
 gunicorn==21.2.0
 Werkzeug==2.3.7
-
-# LLM APIs
-anthropic==0.7.7
-google-generativeai==0.3.2
-huggingface-hub==0.19.4
-
-# Data Processing
-requests==2.31.0
-feedparser==6.0.10
-beautifulsoup4==4.12.2
-
-# Database & Utilities
 python-dotenv==1.0.0
-
-# Remove these for now (not needed for basic connections):
-# pandas==2.0.3
-# numpy==1.25.2
-# matplotlib==3.7.2
-# schedule==1.2.0
-# reportlab==4.0.4
-# Pillow==10.0.0
-# scipy==1.11.2
-# seaborn==0.12.2
+Pillow==10.0.0
+scipy==1.11.2
+seaborn==0.12.2
