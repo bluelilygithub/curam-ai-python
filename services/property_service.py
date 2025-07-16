@@ -124,27 +124,22 @@ class PropertyAnalysisService:
         
         answer_parts = []
         
-        # Header
-        answer_parts.append(f"# Brisbane Property Intelligence Analysis")
-        answer_parts.append(f"## Query: {question}")
-        answer_parts.append("")
-        
         # Main Analysis (Gemini if successful, otherwise Claude)
         if gemini_result['success']:
             model_info = f"({gemini_result.get('model_used', 'Gemini')})"
-            answer_parts.append(f"## Market Analysis {model_info}")
+            answer_parts.append(f"### Market Analysis {model_info}")
             answer_parts.append("")
             answer_parts.append(gemini_result['analysis'])
             answer_parts.append("")
         elif claude_result['success']:
             model_info = f"({claude_result.get('model_used', 'Claude')})"
-            answer_parts.append(f"## Property Research Analysis {model_info}")
+            answer_parts.append(f"### Property Research Analysis {model_info}")
             answer_parts.append("")
             answer_parts.append(claude_result['analysis'])
             answer_parts.append("")
         else:
             # Fallback analysis
-            answer_parts.append("## Brisbane Property Analysis")
+            answer_parts.append("### Brisbane Property Analysis")
             answer_parts.append("")
             answer_parts.append(self._generate_fallback_answer(question))
             answer_parts.append("")
@@ -152,14 +147,14 @@ class PropertyAnalysisService:
         # Strategic Insights (if both models worked and provided different perspectives)
         if claude_result['success'] and gemini_result['success']:
             model_info = f"({claude_result.get('model_used', 'Claude')})"
-            answer_parts.append(f"## Strategic Research Insights {model_info}")
+            answer_parts.append(f"### Strategic Research Insights {model_info}")
             answer_parts.append("")
             answer_parts.append(claude_result['analysis'])
             answer_parts.append("")
         
         # Data Sources
         if data_sources:
-            answer_parts.append("## Data Sources Analyzed")
+            answer_parts.append("### Data Sources Analyzed")
             answer_parts.append("")
             for source in data_sources:
                 relevance_indicator = "🔥" if source.get('relevance') == 'high' else "📊"
@@ -167,7 +162,7 @@ class PropertyAnalysisService:
             answer_parts.append("")
         
         # Processing Summary
-        answer_parts.append("## Processing Summary")
+        answer_parts.append("### Processing Summary")
         answer_parts.append("")
         
         claude_status = "✅ Completed" if claude_result['success'] else f"❌ Failed - {claude_result.get('error', 'Unknown error')}"
