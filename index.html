@@ -4,321 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Brisbane Property Intelligence</title>
-    <style>
-        :root {
-            --primary-color: #2C3E50;
-            --secondary-color: #3498DB;
-            --success-color: #27AE60;
-            --warning-color: #F39C12;
-            --danger-color: #E74C3C;
-            --light-bg: #F8F9FA;
-            --border-color: #DEE2E6;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            line-height: 1.6;
-            color: var(--primary-color);
-            background-color: var(--light-bg);
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .header {
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-            color: white;
-            padding: 2rem 0;
-            margin-bottom: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-
-        .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
-            text-align: center;
-        }
-
-        .header p {
-            text-align: center;
-            opacity: 0.9;
-            font-size: 1.1rem;
-        }
-
-        .status-bar {
-            background: white;
-            padding: 1rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            margin-bottom: 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-
-        .status-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-weight: 500;
-        }
-
-        .status-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-        }
-
-        .status-healthy { background-color: var(--success-color); }
-        .status-warning { background-color: var(--warning-color); }
-        .status-error { background-color: var(--danger-color); }
-
-        .main-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
-
-        .card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 2px 15px rgba(0,0,0,0.08);
-            border: 1px solid var(--border-color);
-        }
-
-        .card h3 {
-            color: var(--primary-color);
-            margin-bottom: 1rem;
-            font-size: 1.3rem;
-        }
-
-        .preset-questions {
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-        }
-
-        .question-btn {
-            background: var(--light-bg);
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
-            padding: 1rem;
-            text-align: left;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 0.95rem;
-            line-height: 1.4;
-        }
-
-        .question-btn:hover {
-            border-color: var(--secondary-color);
-            background: #EBF3FD;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.15);
-        }
-
-        .question-btn.active {
-            border-color: var(--secondary-color);
-            background: var(--secondary-color);
-            color: white;
-        }
-
-        .custom-input {
-            margin-top: 1rem;
-        }
-
-        .custom-input textarea {
-            width: 100%;
-            min-height: 120px;
-            padding: 1rem;
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
-            font-family: inherit;
-            font-size: 1rem;
-            resize: vertical;
-            transition: border-color 0.3s ease;
-        }
-
-        .custom-input textarea:focus {
-            outline: none;
-            border-color: var(--secondary-color);
-            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
-        }
-
-        .analyze-btn {
-            background: var(--secondary-color);
-            color: white;
-            border: none;
-            padding: 1rem 2rem;
-            border-radius: 8px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            width: 100%;
-            margin-top: 1rem;
-        }
-
-        .analyze-btn:hover:not(:disabled) {
-            background: #2980B9;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
-        }
-
-        .analyze-btn:disabled {
-            background: #BDC3C7;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        .results-section {
-            grid-column: 1 / -1;
-        }
-
-        .results-content {
-            min-height: 200px;
-            max-height: 600px;
-            overflow-y: auto;
-            padding: 1.5rem;
-            background: #FAFBFC;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-        }
-
-        .loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 1rem;
-            padding: 2rem;
-            color: var(--secondary-color);
-            font-size: 1.1rem;
-        }
-
-        .spinner {
-            width: 24px;
-            height: 24px;
-            border: 3px solid var(--border-color);
-            border-top: 3px solid var(--secondary-color);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .analysis-result {
-            line-height: 1.8;
-        }
-
-        .analysis-result h1, .analysis-result h2, .analysis-result h3 {
-            color: var(--primary-color);
-            margin: 1.5rem 0 1rem 0;
-        }
-
-        .analysis-result h1 {
-            font-size: 1.8rem;
-            border-bottom: 3px solid var(--secondary-color);
-            padding-bottom: 0.5rem;
-        }
-
-        .analysis-result h2 {
-            font-size: 1.4rem;
-            color: var(--secondary-color);
-        }
-
-        .analysis-result h3 {
-            font-size: 1.2rem;
-        }
-
-        .analysis-result p {
-            margin-bottom: 1rem;
-        }
-
-        .analysis-result ul, .analysis-result ol {
-            margin: 1rem 0 1rem 2rem;
-        }
-
-        .analysis-result li {
-            margin-bottom: 0.5rem;
-        }
-
-        .analysis-result strong {
-            color: var(--primary-color);
-            font-weight: 600;
-        }
-
-        .processing-info {
-            background: var(--light-bg);
-            border-left: 4px solid var(--secondary-color);
-            padding: 1rem;
-            margin: 1rem 0;
-            border-radius: 0 6px 6px 0;
-            font-size: 0.9rem;
-        }
-
-        .error-message {
-            background: #FDEDED;
-            border: 1px solid #F5C6CB;
-            color: #721C24;
-            padding: 1rem;
-            border-radius: 6px;
-            margin: 1rem 0;
-        }
-
-        .success-message {
-            background: #D4EDDA;
-            border: 1px solid #C3E6CB;
-            color: #155724;
-            padding: 1rem;
-            border-radius: 6px;
-            margin: 1rem 0;
-        }
-
-        @media (max-width: 768px) {
-            .main-content {
-                grid-template-columns: 1fr;
-            }
-            
-            .header h1 {
-                font-size: 2rem;
-            }
-            
-            .status-bar {
-                flex-direction: column;
-                text-align: center;
-            }
-            
-            .container {
-                padding: 15px;
-            }
-        }
-
-        .footer {
-            text-align: center;
-            padding: 2rem 0;
-            color: #6C757D;
-            border-top: 1px solid var(--border-color);
-            margin-top: 3rem;
-        }
-    </style>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏢</text></svg>">
+    
+    <!-- Meta Tags for SEO -->
+    <meta name="description" content="AI-Powered Brisbane Property Market Analysis - Professional property intelligence using advanced AI for Queensland real estate insights">
+    <meta name="keywords" content="Brisbane property, Queensland real estate, property analysis, AI property intelligence, Brisbane development">
+    <meta name="author" content="Property Intelligence Team">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Brisbane Property Intelligence">
+    <meta property="og:description" content="AI-Powered Property Market Analysis for Queensland">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://curam-ai.com.au/python-hub/">
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="assets/css/styles.css">
+    
+    <!-- Configuration (Load first) -->
+    <script src="assets/js/config.js"></script>
 </head>
 <body>
     <div class="container">
@@ -326,24 +31,6 @@
             <h1>🏢 Brisbane Property Intelligence</h1>
             <p>AI-Powered Property Market Analysis for Queensland</p>
         </header>
-
-        <div class="status-bar">
-            <div class="status-item">
-                <div class="status-indicator status-healthy"></div>
-                <span>System Online</span>
-            </div>
-            <div class="status-item">
-                <div class="status-indicator" id="aiStatus"></div>
-                <span id="aiStatusText">Checking AI Services...</span>
-            </div>
-            <div class="status-item">
-                <div class="status-indicator status-healthy"></div>
-                <span>Database Connected</span>
-            </div>
-            <div class="status-item">
-                <span id="lastUpdated">Last Updated: Loading...</span>
-            </div>
-        </div>
 
         <div class="main-content">
             <div class="card">
@@ -353,7 +40,7 @@
                 </div>
                 
                 <div class="custom-input">
-                    <label for="customQuestion" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">
+                    <label for="customQuestion" class="input-label">
                         Or ask your own question:
                     </label>
                     <textarea 
@@ -363,28 +50,45 @@
                     ></textarea>
                 </div>
                 
-                <button class="analyze-btn" id="analyzeBtn" onclick="analyzeQuestion()">
+                <button class="analyze-btn" id="analyzeBtn">
                     🔍 Analyze Property Question
                 </button>
             </div>
 
             <div class="card">
                 <h3>🎯 How It Works</h3>
-                <div style="line-height: 1.8;">
-                    <p><strong>1. Select or Enter Question</strong><br>
-                    Choose from preset Brisbane property questions or write your own.</p>
+                <div class="how-it-works">
+                    <div class="step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <strong>Select or Enter Question</strong><br>
+                            Choose from preset Brisbane property questions or write your own.
+                        </div>
+                    </div>
                     
-                    <p><strong>2. AI Analysis</strong><br>
-                    Our Gemini AI analyzes your question with Brisbane-specific data.</p>
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <strong>AI Analysis</strong><br>
+                            Our Gemini AI analyzes your question with Brisbane-specific data.
+                        </div>
+                    </div>
                     
-                    <p><strong>3. Professional Report</strong><br>
-                    Receive detailed insights about Brisbane's property market.</p>
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <strong>Professional Report</strong><br>
+                            Receive detailed insights about Brisbane's property market.
+                        </div>
+                    </div>
                     
-                    <div style="margin-top: 1.5rem; padding: 1rem; background: var(--light-bg); border-radius: 6px;">
-                        <p><strong>🤖 AI Powered by:</strong></p>
-                        <p>• Google Gemini 1.5 Flash<br>
-                        • Brisbane City Council Data<br>
-                        • Professional Property Analysis</p>
+                    <div class="ai-powered">
+                        <h4>🤖 AI Powered by:</h4>
+                        <div class="ai-providers">
+                            <div class="provider">Google Gemini 1.5 Flash</div>
+                            <div class="provider">Brisbane City Council Data</div>
+                            <div class="provider">Professional Property Analysis</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -392,223 +96,32 @@
             <div class="card results-section">
                 <h3>📊 Analysis Results</h3>
                 <div class="results-content" id="resultsContent">
-                    <div style="text-align: center; padding: 2rem; color: #6C757D;">
-                        <p>🏠 Select a question above to get started with Brisbane property analysis.</p>
-                        <p style="margin-top: 1rem; font-size: 0.9rem;">Your analysis will appear here with detailed insights about Brisbane's property market.</p>
+                    <div class="placeholder">
+                        <div class="placeholder-icon">🏠</div>
+                        <h4>Ready for Brisbane Property Analysis</h4>
+                        <p>Select a question above to get started with AI-powered property analysis.</p>
+                        <p class="placeholder-subtitle">Your detailed analysis will appear here with professional insights about Brisbane's property market.</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <footer class="footer">
-            <p>Brisbane Property Intelligence API v2.0 • Professional Multi-LLM Analysis System</p>
-        </footer>
+
     </div>
 
-    <script>
-        // Configuration
-        const API_BASE = window.location.origin;
-        let currentQuestion = '';
-        let presetQuestions = [];
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h3>Brisbane Property Intelligence</h3>
+            <p>Initializing AI systems...</p>
+        </div>
+    </div>
 
-        // Initialize the application
-        document.addEventListener('DOMContentLoaded', function() {
-            loadPresetQuestions();
-            checkSystemHealth();
-        });
+    <!-- Notification Container -->
+    <div id="notificationContainer" class="notification-container"></div>
 
-        // Load preset questions from API
-        async function loadPresetQuestions() {
-            try {
-                const response = await fetch(`${API_BASE}/api/property/questions`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    presetQuestions = data.preset_questions;
-                    renderPresetQuestions();
-                }
-            } catch (error) {
-                console.error('Failed to load preset questions:', error);
-                // Fallback questions
-                presetQuestions = [
-                    "What new development applications were submitted in Brisbane this month?",
-                    "Which Brisbane suburbs are trending in property news?",
-                    "Are there any major infrastructure projects affecting property values?",
-                    "What zoning changes have been approved recently?",
-                    "Which areas have the most development activity?"
-                ];
-                renderPresetQuestions();
-            }
-        }
-
-        // Render preset questions as buttons
-        function renderPresetQuestions() {
-            const container = document.getElementById('presetQuestions');
-            container.innerHTML = '';
-            
-            presetQuestions.forEach((question, index) => {
-                const button = document.createElement('button');
-                button.className = 'question-btn';
-                button.textContent = question;
-                button.onclick = () => selectQuestion(question, button);
-                container.appendChild(button);
-            });
-        }
-
-        // Select a preset question
-        function selectQuestion(question, buttonElement) {
-            // Clear previous selection
-            document.querySelectorAll('.question-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            
-            // Mark current selection
-            buttonElement.classList.add('active');
-            currentQuestion = question;
-            
-            // Clear custom input
-            document.getElementById('customQuestion').value = '';
-        }
-
-        // Check system health
-        async function checkSystemHealth() {
-            try {
-                const response = await fetch(`${API_BASE}/health`);
-                const health = await response.json();
-                
-                updateStatusDisplay(health);
-                document.getElementById('lastUpdated').textContent = 
-                    `Last Updated: ${new Date().toLocaleTimeString()}`;
-                    
-            } catch (error) {
-                console.error('Health check failed:', error);
-                updateStatusDisplay({ status: 'error' });
-            }
-        }
-
-        // Update status display
-        function updateStatusDisplay(health) {
-            const aiStatus = document.getElementById('aiStatus');
-            const aiStatusText = document.getElementById('aiStatusText');
-            
-            if (health.status === 'healthy') {
-                aiStatus.className = 'status-indicator status-healthy';
-                aiStatusText.textContent = 'AI Services Online';
-            } else {
-                aiStatus.className = 'status-indicator status-warning';
-                aiStatusText.textContent = 'AI Services Limited';
-            }
-        }
-
-        // Analyze the selected question
-        async function analyzeQuestion() {
-            const customInput = document.getElementById('customQuestion').value.trim();
-            const questionToAnalyze = customInput || currentQuestion;
-            
-            if (!questionToAnalyze) {
-                showError('Please select a preset question or enter your own question.');
-                return;
-            }
-            
-            const analyzeBtn = document.getElementById('analyzeBtn');
-            const resultsContent = document.getElementById('resultsContent');
-            
-            // Show loading state
-            analyzeBtn.disabled = true;
-            analyzeBtn.textContent = '🔄 Analyzing...';
-            resultsContent.innerHTML = `
-                <div class="loading">
-                    <div class="spinner"></div>
-                    <span>Analyzing your Brisbane property question...</span>
-                </div>
-            `;
-            
-            try {
-                const response = await fetch(`${API_BASE}/api/property/analyze`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        question: questionToAnalyze,
-                        include_details: false
-                    })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    displayAnalysisResult(result);
-                } else {
-                    showError(`Analysis failed: ${result.error}`);
-                }
-                
-            } catch (error) {
-                console.error('Analysis failed:', error);
-                showError('Failed to connect to analysis service. Please try again.');
-            } finally {
-                analyzeBtn.disabled = false;
-                analyzeBtn.textContent = '🔍 Analyze Property Question';
-            }
-        }
-
-        // Display analysis results
-        function displayAnalysisResult(result) {
-            const resultsContent = document.getElementById('resultsContent');
-            
-            const processingInfo = `
-                <div class="processing-info">
-                    <strong>⚡ Processing Summary:</strong><br>
-                    Analysis completed in ${result.processing_time}s using professional AI pipeline<br>
-                    Question type: ${result.question_type} • AI Provider: Gemini
-                </div>
-            `;
-            
-            // Convert markdown-style content to HTML
-            const htmlContent = convertMarkdownToHTML(result.answer);
-            
-            resultsContent.innerHTML = `
-                <div class="success-message">
-                    ✅ Analysis completed successfully for: "${result.question}"
-                </div>
-                ${processingInfo}
-                <div class="analysis-result">
-                    ${htmlContent}
-                </div>
-            `;
-            
-            resultsContent.scrollTop = 0;
-        }
-
-        // Simple markdown to HTML converter
-        function convertMarkdownToHTML(markdown) {
-            return markdown
-                .replace(/^# (.*$)/gm, '<h1>$1</h1>')
-                .replace(/^## (.*$)/gm, '<h2>$1</h2>')
-                .replace(/^### (.*$)/gm, '<h3>$1</h3>')
-                .replace(/^\*\*(.*?)\*\*/gm, '<strong>$1</strong>')
-                .replace(/^- (.*$)/gm, '<li>$1</li>')
-                .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
-                .replace(/\n\n/g, '</p><p>')
-                .replace(/^(?!<[h|u|l])(.+)$/gm, '<p>$1</p>')
-                .replace(/<p><\/p>/g, '');
-        }
-
-        // Show error message
-        function showError(message) {
-            const resultsContent = document.getElementById('resultsContent');
-            resultsContent.innerHTML = `
-                <div class="error-message">
-                    ❌ ${message}
-                </div>
-                <div style="text-align: center; padding: 1rem; color: #6C757D;">
-                    <p>Please try again or contact support if the problem persists.</p>
-                </div>
-            `;
-        }
-
-        // Auto-refresh health status every 30 seconds
-        setInterval(checkSystemHealth, 30000);
-    </script>
+    <!-- Main Application Script -->
+    <script src="assets/js/app.js"></script>
 </body>
 </html>
